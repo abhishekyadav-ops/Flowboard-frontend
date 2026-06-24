@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
+import LoginSuccess from "../pages/LoginSuccess"; // Added this back in!
 import Dashboard from "../pages/Dashboard";
 import Boards from "../pages/Boards";
 import BoardPage from "../pages/BoardPage";
@@ -12,13 +13,25 @@ function AppRoutes() {
     <BrowserRouter>
       <Routes>
         {/* Public Routes */}
-        <Route path="/" element={<Login />} />
+        {/* Redirect root URL "/" automatically to login */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/login-success" element={<LoginSuccess />} />
 
         {/* Protected Routes */}
         <Route
           path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        
+        {/* Alias path to also load the dashboard view */}
+        <Route
+          path="/workspaces"
           element={
             <ProtectedRoute>
               <Dashboard />
