@@ -143,11 +143,14 @@ function Register() {
           
           {/* Full Name Input Box */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <label htmlFor="name" className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Full Name
             </label>
             <input
               type="text"
+              name="name"
+              id="name"
+              autoComplete="name"
               placeholder="John Doe"
               value={name}
               disabled={loading}
@@ -159,11 +162,14 @@ function Register() {
 
           {/* Email Input Box */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <label htmlFor="email" className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Email Address
             </label>
             <input
               type="email"
+              name="email"
+              id="email"
+              autoComplete="username"
               placeholder="name@company.com"
               value={email}
               disabled={loading}
@@ -175,11 +181,14 @@ function Register() {
 
           {/* Password Input Box */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <label htmlFor="password" className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Password
             </label>
             <input
               type="password"
+              name="password"
+              id="password"
+              autoComplete="new-password" /* 🌟 Triggers browser password generation suggestions */
               placeholder="••••••••"
               value={password}
               disabled={loading}
@@ -191,11 +200,14 @@ function Register() {
 
           {/* Confirm Password Input Box */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <label htmlFor="confirmPassword" className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Confirm Password
             </label>
             <input
               type="password"
+              name="confirmPassword"
+              id="confirmPassword"
+              autoComplete="new-password" /* 🌟 Pairs with the password field for keychain updates */
               placeholder="••••••••"
               value={confirmPassword}
               disabled={loading}
