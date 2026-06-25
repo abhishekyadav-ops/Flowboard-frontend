@@ -5,7 +5,14 @@ import api from "../services/api";
 interface Board {
   id: number;
   name: string;
-  created_by?: number;  
+  created_by: number; // 🌟 Points to the user id number
+  
+  // 🌟 The nested owner profile we are fetching from the backend relation
+  owner?: {
+    id: number;
+    name: string;
+    email: string;
+  };
 }
 
 function Boards() {
@@ -193,9 +200,21 @@ function Boards() {
               className="bg-[#111827] border border-slate-800 rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:border-blue-500/80 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-900/10 flex flex-col justify-between h-44 group"
             >
               <div className="flex justify-between items-start gap-3">
-                <h3 className="text-xl font-semibold text-slate-200 group-hover:text-white transition-colors truncate max-w-[70%]">
-                  {board.name}
-                </h3>
+                {/* 🌟 WRAPPED HEADER: Organizes Board Name and the new Creator Badge cleanly */}
+                <div className="flex flex-col gap-1 max-w-[70%]">
+                  <h3 className="text-xl font-semibold text-slate-200 group-hover:text-white transition-colors truncate">
+                    {board.name}
+                  </h3>
+                  
+                  {/* 🌟 NEW ELEMENT: Dynamic Board Creator Badge */}
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[11px] text-slate-500 font-medium">Created By:</span>
+                    <span className="inline-flex items-center bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.2 rounded text-[11px] font-semibold text-indigo-400">
+                      {board.owner?.name || "Board Creator"}
+                    </span>
+                  </div>
+                </div>
+
                 <span className="bg-slate-800 text-slate-400 border border-slate-700/50 px-2.5 py-0.5 rounded-lg text-xs font-mono font-medium shrink-0">
                   #{board.id}
                 </span>
@@ -210,7 +229,7 @@ function Boards() {
                 {/* Actions Button Container (Revealed smoothly on item hover) */}
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                   
-                  {/* 🌟 EDIT BUTTON: Now secure. Only visible to the owner/creator */}
+                  {/* 🌟 EDIT BUTTON: Secure. Only visible to the owner/creator */}
                   {currentUserId === board.created_by && (
                     <button
                       onClick={(e) => {
