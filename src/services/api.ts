@@ -1,8 +1,10 @@
 import axios from "axios";
 
+// Cleanly grab the environment variable or fallback to local
+const baseURL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://127.0.0.1:8000",
-  timeout: 10000,
+  baseURL: baseURL,
 });
 
 // Request Interceptor: Attach the bearer token to outgoing requests automatically
@@ -37,4 +39,5 @@ api.interceptors.response.use(
   }
 );
 
+// ONLY ONE EXPORT AT THE VERY BOTTOM
 export default api;
