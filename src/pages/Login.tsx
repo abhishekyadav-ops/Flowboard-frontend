@@ -42,10 +42,14 @@ function Login() {
     }
   };
 
-  // 🌟 Google Redirect Handler
-  const handleGoogleLogin = () => {
-    window.location.href = "http://localhost:8000/users/auth/google/login";
-  };
+  /// 🌟 Google Redirect Handler
+const handleGoogleLogin = () => {
+  // Read the base URL from environment variables, fallback to localhost if it's blank
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+  
+  // Dynamically build the destination redirect link string
+  window.location.href = `${apiBaseUrl}/users/auth/google/login`;
+};
 
   const handleForgotPassword = () => {
     alert("Password reset instructions have been sent to your email if the account exists.");
