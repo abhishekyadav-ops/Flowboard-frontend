@@ -6,18 +6,18 @@ export default function LoginSuccess() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // 1. Parse out the token data argument hidden inside the URL string
     const token = searchParams.get("token");
 
     if (token) {
-      // 2. Save the authentic application authorization token to local storage
+      // 1. Flush and explicitly set the token down into storage
       localStorage.setItem("token", token);
       
-      // 3. Forward the newly verified OG account into the main workspaces interface
-      navigate("/workspaces");
+      // 2. Use replace: true to clear out the oauth parameters from the history stack
+      // This stops browser back-button loop errors!
+      navigate("/workspaces", { replace: true });
     } else {
       alert("Authentication token not found. Redirecting to login.");
-      navigate("/login");
+      navigate("/login", { replace: true });
     }
   }, [searchParams, navigate]);
 
