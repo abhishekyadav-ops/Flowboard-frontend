@@ -5,6 +5,7 @@ import api from "../services/api";
 interface Board {
   id: number;
   name: string;
+  created_by?: number;  
 }
 
 function Boards() {
@@ -14,16 +15,30 @@ function Boards() {
   const [boards, setBoards] = useState<Board[]>([]);
   const [boardName, setBoardName] = useState("");
   const [loading, setLoading] = useState(true);
+  
+  // 🌟 Added: Track current user local state so permissions check functions cleanly
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
-  const fetchBoards = async () => {
+  // Core data fetcher with an optional 'silent' parameter to refresh background listings smoothly
+  const fetchBoards = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const response = await api.get(`/boards/workspace/${workspaceId}`);
       setBoards(response.data);
     } catch (error: any) {
       alert(error?.response?.data?.detail || "Failed to load project boards");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 🌟 Added: Extract user info from local token state to verify permissions matching
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await api.get("/users/me"); // Adjust path if your profile endpoint differs
+      setCurrentUserId(response.data.id);
+    } catch (error) {
+      console.error("Could not fetch user context profile", error);
     }
   };
 
@@ -41,14 +56,35 @@ function Boards() {
       });
 
       setBoardName("");
-      await fetchBoards();
+      await fetchBoards(true); // Silent reload after creating
     } catch (error: any) {
       alert(error?.response?.data?.detail || "Failed to create board");
     }
   };
 
+  // Handler to update board names
+  const handleUpdateBoard = async (boardId: number, updatedName: string) => {
+    try {
+      await api.put(`/boards/${boardId}`, { name: updatedName });
+      await fetchBoards(true); // Silent reload after updating
+    } catch (error: any) {
+      alert(error?.response?.data?.detail || "Failed to update board");
+    }
+  };
+
+  // Handler to delete boards
+  const handleDeleteBoard = async (boardId: number) => {
+    try {
+      await api.delete(`/boards/${boardId}`);
+      await fetchBoards(true); // Silent reload after deletion
+    } catch (error: any) {
+      alert(error?.response?.data?.detail || "Failed to delete board");
+    }
+  };
+
   useEffect(() => {
     if (workspaceId) {
+      fetchCurrentUser();
       fetchBoards();
     }
   }, [workspaceId]);
@@ -75,7 +111,7 @@ function Boards() {
                 onClick={() => navigate("/dashboard")}
                 className="text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors"
               >
-                ← Workspaces
+                &larr; Workspaces
               </button>
             </div>
             <h1 className="text-4xl font-bold">Workspace Boards</h1>
@@ -83,16 +119,18 @@ function Boards() {
           </div>
 
           <div className="flex gap-3 items-center">
-            {/* Styled Back Button replacing the old LogOut button */}
             <button
-              onClick={() => navigate("/")}
-              className="bg-red-800 hover:bg-slate-700 text-slate-200 px-5 py-3 rounded-xl font-semibold transition"
+              onClick={() => {
+                localStorage.removeItem("token");
+                navigate("/login");
+              }}
+              className="bg-red-600/90 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl font-medium text-sm transition-colors shadow-lg shadow-red-950/20"
             >
-              LogOut
+              Logout
             </button>
             <button
               onClick={() => navigate(`/workspaces/${workspaceId}/members`)}
-              className="bg-indigo-600 hover:bg-indigo-700 px-5 py-3 rounded-xl font-semibold transition"
+              className="bg-indigo-600 hover:bg-indigo-700 px-5 py-2.5 rounded-xl font-medium text-sm transition-colors"
             >
               Manage Members
             </button>
@@ -143,7 +181,7 @@ function Boards() {
         </div>
 
         {/* Boards Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {boards.map((board) => (
             <div
               key={board.id}
@@ -152,15 +190,59 @@ function Boards() {
                   state: { workspaceId },
                 })
               }
-              className="bg-[#111827] border border-slate-800 rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:border-blue-500 hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-900/30"
+              className="bg-[#111827] border border-slate-800 rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:border-blue-500/80 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-900/10 flex flex-col justify-between h-44 group"
             >
-              <div className="flex justify-between items-center">
-                <h3 className="text-xl font-semibold truncate max-w-[75%]">{board.name}</h3>
-                <span className="bg-blue-600 px-3 py-1 rounded-lg text-sm font-semibold whitespace-nowrap">
+              <div className="flex justify-between items-start gap-3">
+                <h3 className="text-xl font-semibold text-slate-200 group-hover:text-white transition-colors truncate max-w-[70%]">
+                  {board.name}
+                </h3>
+                <span className="bg-slate-800 text-slate-400 border border-slate-700/50 px-2.5 py-0.5 rounded-lg text-xs font-mono font-medium shrink-0">
                   #{board.id}
                 </span>
               </div>
-              <p className="text-slate-400 mt-4 text-sm font-medium">Open Board →</p>
+
+              {/* Card Footer Actions Row */}
+              <div className="flex justify-between items-center pt-4 border-t border-slate-800/40 mt-auto">
+                <p className="text-xs text-blue-400 font-medium group-hover:text-blue-300 transition-colors">
+                  Open Board &rarr;
+                </p>
+
+                {/* Actions Button Container (Revealed smoothly on item hover) */}
+                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  
+                  {/* 🌟 EDIT BUTTON: Now secure. Only visible to the owner/creator */}
+                  {currentUserId === board.created_by && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation(); // Stops routing navigation event
+                        const newName = window.prompt("Enter new board name:", board.name);
+                        if (newName && newName.trim() && newName !== board.name) {
+                          handleUpdateBoard(board.id, newName.trim());
+                        }
+                      }}
+                      className="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
+                    >
+                      Edit
+                    </button>
+                  )}
+
+                  {/* 🌟 DELETE BUTTON: Secure. Only visible to the owner/creator */}
+                  {currentUserId === board.created_by && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation(); // Stops routing navigation event
+                        if (window.confirm(`Are you sure you want to delete "${board.name}"?`)) {
+                          handleDeleteBoard(board.id);
+                        }
+                      }}
+                      className="bg-slate-900 hover:bg-red-950/30 text-slate-400 hover:text-red-400 border border-slate-800 hover:border-red-900/40 px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
+                    >
+                      Delete
+                    </button>
+                  )}
+                  
+                </div>
+              </div>
             </div>
           ))}
         </div>

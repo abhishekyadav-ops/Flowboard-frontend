@@ -93,29 +93,30 @@ export default function Members() {
 
   return (
     <div className="min-h-screen bg-[#030712] text-white p-8">
-      {/* 🌟 Central Wrapper Container (Constrains width and centers everything on the screen) */}
+      {/* Central Wrapper Container */}
       <div className="max-w-2xl mx-auto w-full flex flex-col justify-start items-stretch">
         
         {/* Back Button Action Bar */}
-<div className="flex justify-start mb-6">
-  <button
-    onClick={() => navigate(`/workspaces/${workspaceId}`)}
-    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-lg transition-all"
-  >
-    {/* 🌟 Pure Inline SVG Back Arrow (No imports required!) */}
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      fill="none" 
-      viewBox="0 0 24 24" 
-      strokeWidth={2} 
-      stroke="currentColor" 
-      className="w-4 h-4"
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-    </svg>
-    Back to Workspace
-  </button>
-</div>
+        <div className="flex justify-start mb-6">
+          <button
+            onClick={() => navigate(`/workspaces/${workspaceId}/boards`)} // 🌟 FIXED: Links back to boards grid
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-lg transition-all"
+          >
+            {/* Pure Inline SVG Back Arrow */}
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              strokeWidth={2} 
+              stroke="currentColor" 
+              className="w-4 h-4"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+            </svg>
+            Back to Workspace
+          </button>
+        </div>
+
         <h1 className="text-4xl font-bold mb-8 text-left">Team Members</h1>
 
         {/* Add Member Section */}
