@@ -29,13 +29,15 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({ activeBoards: 0, teamMembers: 0 });
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<number | null>(null);
   
-  // 🌟 State variables to track which workspace is currently being edited inline
+  // State variables to track which workspace is currently being edited inline
   const [editingWorkspaceId, setEditingWorkspaceId] = useState<number | null>(null);
   const [editNameValue, setEditNameValue] = useState("");
 
   const navigate = useNavigate();
 
+  // 1. Fetch User Context
   const fetchCurrentUser = async () => {
     try {
       const response = await api.get("/users/me"); 
@@ -45,6 +47,21 @@ export default function Dashboard() {
     }
   };
 
+  // 2. 🌟 NEW & CLEAN: Fetch stats ONLY for the active workspace
+  const fetchActiveWorkspaceStats = async (workspaceId: number) => {
+    try {
+      const statsRes = await api.get(`/workspaces/${workspaceId}/stats`);
+      // Maps directly to your backend's updated keys: activeBoards and teamMembers
+      setStats({
+        activeBoards: statsRes.data.activeBoards || 0,
+        teamMembers: statsRes.data.teamMembers || 0
+      });
+    } catch (err) {
+      console.error(`Failed to pull unique statistics for workspace ${workspaceId}`, err);
+    }
+  };
+
+  // 3. 🌟 REWRITTEN: Loads workspaces and syncs selection state
   const fetchWorkspacesAndStats = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
@@ -53,31 +70,28 @@ export default function Dashboard() {
       const fetchedWorkspaces: Workspace[] = response.data;
       setWorkspaces(fetchedWorkspaces);
 
-      let totalBoards = 0;
-      let totalMembers = 0;
-
-      await Promise.all(
-        fetchedWorkspaces.map(async (ws) => {
-          try {
-            const statsRes = await api.get(`/workspaces/${ws.id}/stats`);
-            totalBoards += statsRes.data.board_count || 0;
-            const rawMemberCount = statsRes.data.member_count || 0;
-            if (rawMemberCount > 0) {
-              totalMembers += (rawMemberCount - 1);
-            }
-          } catch (err) {
-            console.error(`Failed to pull statistics for workspace ${ws.id}`, err);
-          }
-        })
-      );
-
-      setStats({ activeBoards: totalBoards, teamMembers: totalMembers });
+      if (fetchedWorkspaces.length > 0) {
+        // If no active workspace is selected yet, default to the first one
+        const targetId = activeWorkspaceId || fetchedWorkspaces[0].id;
+        setActiveWorkspaceId(targetId);
+        await fetchActiveWorkspaceStats(targetId);
+      } else {
+        // Clear stats if there are no workspaces
+        setStats({ activeBoards: 0, teamMembers: 0 });
+      }
     } catch (error: any) {
       alert(error?.response?.data?.detail || "Failed to load dashboard data");
     } finally {
       setLoading(false);
     }
   };
+
+  // 4. 🌟 NEW EFFECT: Re-fetch stats instantly whenever the user switches workspaces!
+  useEffect(() => {
+    if (activeWorkspaceId) {
+      fetchActiveWorkspaceStats(activeWorkspaceId);
+    }
+  }, [activeWorkspaceId]);
 
   const createWorkspace = async () => {
     try {
