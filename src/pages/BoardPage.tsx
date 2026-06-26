@@ -370,6 +370,7 @@ function BoardPage() {
                         )}
                       </div>
 
+
                       <div className="pt-1 flex flex-col gap-2">
                         <div className="flex flex-wrap gap-1.5 items-center">
                           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block w-full mb-0.5">
