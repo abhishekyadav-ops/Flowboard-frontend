@@ -191,21 +191,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid md:grid-cols-3 gap-5 mb-10">
-          <div className="bg-[#111827] border border-blue-900 rounded-2xl p-6">
-            <p className="text-slate-400">Workspaces</p>
-            <h3 className="text-4xl font-bold mt-2">{workspaces.length}</h3>
-          </div>
-          <div className="bg-[#111827] border border-green-900 rounded-2xl p-6">
-            <p className="text-slate-400">Active Boards</p>
-            <h3 className="text-4xl font-bold mt-2">{stats.activeBoards}</h3>
-          </div>
-          <div className="bg-[#111827] border border-red-900 rounded-2xl p-6">
-            <p className="text-slate-400">Team Members</p>
-            <h3 className="text-4xl font-bold mt-2">{stats.teamMembers}</h3>
-          </div>
-        </div>
+        
 
         <div className="flex items-center gap-4 mb-6 pb-4 border-b border-slate-800/60">
           <h2 className="text-2xl font-bold text-white tracking-tight">My Workspaces</h2>

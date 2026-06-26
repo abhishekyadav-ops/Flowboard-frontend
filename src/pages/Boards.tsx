@@ -171,21 +171,6 @@ function Boards() {
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid md:grid-cols-3 gap-5 mb-10">
-          <div className="bg-[#111827] border border-blue-900 rounded-2xl p-6">
-            <p className="text-slate-400">Total Boards</p>
-            <h3 className="text-4xl font-bold mt-2">{boards.length}</h3>
-          </div>
-          <div className="bg-[#111827] border border-green-900 rounded-2xl p-6">
-            <p className="text-slate-400">Active Projects</p>
-            <h3 className="text-4xl font-bold mt-2">{boards.length}</h3>
-          </div>
-          <div className="bg-[#111827] border border-purple-900 rounded-2xl p-6">
-            <p className="text-slate-400">Workspace ID</p>
-            <h3 className="text-4xl font-bold mt-2">#{workspaceId}</h3>
-          </div>
-        </div>
 
         {/* Boards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
