@@ -6,6 +6,9 @@ interface Card {
   id: number;
   title: string;
   description: string;
+  created_at?: string; 
+  due_date?: string;    
+  important_link?: string; 
 }
 
 interface List {
@@ -33,35 +36,38 @@ function BoardPage() {
 
   const [lists, setLists] = useState<List[]>([]);
   const [cards, setCards] = useState<Record<number, Card[]>>({});
-  const [newCards, setNewCards] = useState<Record<number, string>>({});
   const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMember[]>([]);
   
   const [editingCard, setEditingCard] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
+  const [editLink, setEditLink] = useState(""); 
+  
   const [assignees, setAssignees] = useState<Record<number, CardAssignee[]>>({});
   const [loading, setLoading] = useState(true);
 
-  // Drag and drop tracking state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeListId, setActiveListId] = useState<number | null>(null);
+  const [popupTitle, setPopupTitle] = useState("");
+  const [popupDueDate, setPopupDueDate] = useState("");
+  const [popupLink, setPopupLink] = useState(""); 
+
   const [draggedCardId, setDraggedCardId] = useState<number | null>(null);
   const [sourceListId, setSourceListId] = useState<number | null>(null);
 
   const fetchWorkspaceMembers = async () => {
-  if (!workspaceId) return;
-  try {
-    const response = await api.get(`/workspaces/${workspaceId}/members`);
-    
-    // 🌟 This maps over the data to handle whatever structure the backend is sending
-    const formattedMembers = response.data.map((item: any) => ({
-      user_id: item.user_id,
-      name: item.user?.name || item.name || `User #${item.user_id}`,
-      email: item.user?.email || item.email || ""
-    }));
-
-    setWorkspaceMembers(formattedMembers);
-  } catch (error) {
-    console.error("Failed to load team context roles", error);
-  }
-};
+    if (!workspaceId) return;
+    try {
+      const response = await api.get(`/workspaces/${workspaceId}/members`);
+      const formattedMembers = response.data.map((item: any) => ({
+        user_id: item.user_id,
+        name: item.user?.name || item.name || `User #${item.user_id}`,
+        email: item.user?.email || item.email || ""
+      }));
+      setWorkspaceMembers(formattedMembers);
+    } catch (error) {
+      console.error("Failed to load team context roles", error);
+    }
+  };
 
   const fetchAssignees = async (cardId: number) => {
     try {
@@ -101,18 +107,29 @@ function BoardPage() {
     }
   };
 
-  const createCard = async (listId: number) => {
-    const cardTitle = newCards[listId]?.trim();
-    if (!cardTitle) return;
+  const openCreateModal = (listId: number) => {
+    setActiveListId(listId);
+    setPopupTitle("");
+    setPopupDueDate("");
+    setPopupLink(""); 
+    setIsModalOpen(true);
+  };
+
+  const createCardFromModal = async () => {
+    const cardTitle = popupTitle.trim();
+    if (!cardTitle || activeListId === null) return;
 
     try {
       await api.post("/cards/", {
-        list_id: listId,
+        list_id: activeListId,
         title: cardTitle,
         description: "",
+        due_date: popupDueDate ? new Date(popupDueDate).toISOString() : null,
+        important_link: popupLink.trim() || null, 
       });
-      setNewCards((prev) => ({ ...prev, [listId]: "" }));
-      await fetchCards(listId);
+      
+      setIsModalOpen(false);
+      await fetchCards(activeListId);
     } catch (error: any) {
       alert(error?.response?.data?.detail || "Could not write card metadata");
     }
@@ -124,12 +141,14 @@ function BoardPage() {
       await api.put(`/cards/${cardId}`, {
         title: editTitle.trim(),
         description: "",
+        important_link: editLink.trim() || null, 
       });
       setEditingCard(null);
       setEditTitle("");
+      setEditLink("");
       await fetchCards(listId);
     } catch (error: any) {
-      alert(error?.response?.data?.detail || "Failed to modify card title");
+      alert(error?.response?.data?.detail || "Failed to modify card info");
     }
   };
 
@@ -162,25 +181,22 @@ function BoardPage() {
     }
   };
 
-  // --- Native HTML5 Drag and Drop Handlers ---
   const handleDragStart = (cardId: number, listId: number) => {
     setDraggedCardId(cardId);
     setSourceListId(listId);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault(); // Crucial to allow a drop event to trigger
+    e.preventDefault();
   };
 
   const handleDropOnList = async (targetListId: number) => {
     if (draggedCardId === null || sourceListId === null) return;
-    if (sourceListId === targetListId) return; // Dropped in the same container
+    if (sourceListId === targetListId) return;
 
-    // 1. Locate the card object reference
     const movingCard = cards[sourceListId]?.find((c) => c.id === draggedCardId);
     if (!movingCard) return;
 
-    // 2. Optimistic UI update: Instantly move the card layout locally
     const updatedSourceCards = cards[sourceListId].filter((c) => c.id !== draggedCardId);
     const updatedTargetCards = [...(cards[targetListId] || []), movingCard];
 
@@ -190,10 +206,8 @@ function BoardPage() {
       [targetListId]: updatedTargetCards,
     }));
 
-    // Calculate dynamic position (tacking onto the tail index of the target swimlane list)
     const newPosition = updatedTargetCards.length - 1;
 
-    // 3. Persist the change upstream to your FastAPI backend route
     try {
       await api.put(`/cards/${draggedCardId}/move`, {
         list_id: targetListId,
@@ -201,11 +215,9 @@ function BoardPage() {
       });
     } catch (error) {
       console.error("Failed to persist card move on backend", error);
-      // Rollback on network failure
       fetchCards(sourceListId);
       fetchCards(targetListId);
     } finally {
-      // Clear tracking state flags
       setDraggedCardId(null);
       setSourceListId(null);
     }
@@ -262,7 +274,7 @@ function BoardPage() {
               {cards[list.id]?.map((card) => (
                 <div
                   key={card.id}
-                  draggable={editingCard !== card.id} // Disable drag if user is typing an edit
+                  draggable={editingCard !== card.id}
                   onDragStart={() => handleDragStart(card.id, list.id)}
                   className={`bg-[#1f2937] border border-slate-700/60 rounded-xl p-4 flex flex-col gap-3 shadow-md hover:border-slate-600 transition-colors ${
                     draggedCardId === card.id ? "opacity-40 border-dashed border-blue-500" : "cursor-grab active:cursor-grabbing"
@@ -270,15 +282,25 @@ function BoardPage() {
                 >
                   {editingCard === card.id ? (
                     <div className="flex flex-col gap-2">
+                      <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Title</label>
                       <input
                         type="text"
                         value={editTitle}
                         onChange={(e) => setEditTitle(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && updateCard(card.id, list.id)}
-                        className="w-full bg-slate-900 border border-slate-600 rounded-lg p-2 text-sm focus:outline-none focus:border-blue-500 text-white"
+                        className="w-full bg-slate-900 border border-slate-600 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-blue-500"
                         autoFocus
                       />
-                      <div className="flex gap-2 justify-end">
+                      
+                      <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mt-1">Important Link URL</label>
+                      <input
+                        type="text"
+                        placeholder="https://example.com"
+                        value={editLink}
+                        onChange={(e) => setEditLink(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-600 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                      />
+
+                      <div className="flex gap-2 justify-end mt-2">
                         <button
                           onClick={() => setEditingCard(null)}
                           className="bg-slate-700 text-xs px-3 py-1.5 rounded-md font-medium hover:bg-slate-600 transition"
@@ -296,14 +318,28 @@ function BoardPage() {
                   ) : (
                     <>
                       <div className="flex justify-between items-start gap-2">
-                        <span className="font-semibold text-sm text-white break-words max-w-[70%]">
+                        <span className="font-semibold text-sm text-white break-words max-w-[50%]">
                           {card.title}
                         </span>
-                        <div className="flex gap-1 shrink-0">
+                        
+                        {/* 🌟 Repositioned Action Controls cluster */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          {/* Link Button dynamically displays right next to 'Edit' if data exists */}
+                          {card.important_link && (
+                            <a
+                              href={card.important_link.startsWith("http") ? card.important_link : `https://${card.important_link}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-400 hover:text-blue-300 bg-blue-500/10 border border-blue-500/20 p-1 px-2 rounded font-medium transition cursor-pointer"
+                            >
+                              🔗 Link
+                            </a>
+                          )}
                           <button
                             onClick={() => {
                               setEditingCard(card.id);
                               setEditTitle(card.title);
+                              setEditLink(card.important_link || ""); 
                             }}
                             className="text-xs text-slate-400 hover:text-blue-400 bg-slate-800 p-1 px-2 rounded transition"
                           >
@@ -318,7 +354,23 @@ function BoardPage() {
                         </div>
                       </div>
 
-                      <div className="pt-2 border-t border-slate-700/50 flex flex-col gap-2">
+                      <div className="flex flex-col gap-1 text-[11px] text-slate-400 border-b border-slate-700/40 pb-2">
+                        {card.created_at && (
+                          <div>
+                            📅 <span className="font-medium text-slate-500">Created:</span> {new Date(card.created_at).toLocaleDateString()}
+                          </div>
+                        )}
+                        {card.due_date && (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            ⏰ <span className="font-medium text-slate-500">Due:</span> 
+                            <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.2 rounded font-medium">
+                              {new Date(card.due_date).toLocaleDateString()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="pt-1 flex flex-col gap-2">
                         <div className="flex flex-wrap gap-1.5 items-center">
                           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block w-full mb-0.5">
                             Assigned To:
@@ -365,29 +417,84 @@ function BoardPage() {
             </div>
 
             <div className="p-3 border-t border-slate-800/80 bg-slate-900/40 rounded-b-2xl">
-              <input
-                type="text"
-                placeholder="Write card title..."
-                value={newCards[list.id] || ""}
-                onChange={(e) =>
-                  setNewCards((prev) => ({
-                    ...prev,
-                    [list.id]: e.target.value,
-                  }))
-                }
-                onKeyDown={(e) => e.key === "Enter" && createCard(list.id)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
-              />
               <button
-                onClick={() => createCard(list.id)}
-                className="w-full mt-2 bg-blue-600/90 hover:bg-blue-600 text-white text-xs py-2 rounded-xl font-semibold transition"
+                onClick={() => openCreateModal(list.id)}
+                className="w-full bg-blue-600/90 hover:bg-blue-600 text-white text-sm py-2.5 rounded-xl font-semibold transition shadow-md flex items-center justify-center gap-2"
               >
-                + Add Card
+                <span>+</span> Add Card
               </button>
             </div>
           </div>
         ))}
       </div>
+
+      {/* Popup Creation Form Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#111827] border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl flex flex-col gap-4 animate-scale-in">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h2 className="text-lg font-bold text-slate-100">Create New Project Card</h2>
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="text-slate-400 hover:text-white text-xl font-medium transition"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-4 py-2">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Card Title *</label>
+                <input
+                  type="text"
+                  placeholder="e.g., Implement OAuth Endpoints"
+                  value={popupTitle}
+                  onChange={(e) => setPopupTitle(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Target Due Date</label>
+                <input
+                  type="date"
+                  value={popupDueDate}
+                  onChange={(e) => setPopupDueDate(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Important Link Resource (URL)</label>
+                <input
+                  type="text"
+                  placeholder="e.g., https://github.com/pulls/12"
+                  value={popupLink}
+                  onChange={(e) => setPopupLink(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 border-t border-slate-800 pt-4 mt-2">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-4 py-2.5 rounded-xl font-semibold transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={createCardFromModal}
+                disabled={!popupTitle.trim()}
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:hover:bg-blue-600 text-white text-xs px-5 py-2.5 rounded-xl font-semibold transition shadow-md"
+              >
+                Confirm & Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
