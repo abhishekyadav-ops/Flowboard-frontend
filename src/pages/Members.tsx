@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../services/api";
 
@@ -21,13 +21,12 @@ interface UserSearchResult {
   email: string;
 }
 
-// ─── Global styles matching BoardPage ──────────────────────────────────────────
 const MEMBERS_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { -webkit-text-size-adjust: 100%; }
-  body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
+  body { font-family: 'Inter', sans-serif; overflow-x: hidden; background: #050A14; }
 
   @keyframes aurora {
     0%   { transform: translate(0%,0%)   scale(1);    opacity: .45; }
@@ -39,12 +38,10 @@ const MEMBERS_STYLES = `
   @keyframes fadeIn   { from { opacity:0; } to { opacity:1; } }
   @keyframes scaleIn  { from { opacity:0; transform:scale(.95) translateY(8px); } to { opacity:1; transform:scale(1) translateY(0); } }
 
-  /* ── Custom Scrollbar for Dropdown ── */
   .dropdown-scroll::-webkit-scrollbar { width: 4px; }
   .dropdown-scroll::-webkit-scrollbar-track { background: transparent; }
   .dropdown-scroll::-webkit-scrollbar-thumb { background: rgba(99,102,241,.25); border-radius: 99px; }
 
-  /* ── Navbar ── */
   .members-navbar {
     position: fixed; top: 0; left: 0; right: 0; z-index: 100;
     background: rgba(5,10,20,.88);
@@ -58,7 +55,6 @@ const MEMBERS_STYLES = `
   }
   @media (min-width: 640px) { .members-navbar { height: 64px; padding: 0 32px; } }
 
-  /* ── Section Blocks ── */
   .content-card {
     background: linear-gradient(160deg,#0D1830 0%,#0A1220 100%);
     border: 1px solid rgba(99,102,241,.12);
@@ -68,7 +64,6 @@ const MEMBERS_STYLES = `
     box-shadow: 0 4px 24px rgba(0,0,0,.2);
   }
 
-  /* ── Member Row Row ── */
   .member-item-row {
     background: linear-gradient(145deg,#131f35,#0e1826);
     border: 1px solid rgba(255,255,255,.07);
@@ -84,18 +79,15 @@ const MEMBERS_STYLES = `
     }
   }
 
-  /* ── Input focus ── */
   .input-glow:focus {
     outline: none;
     border-color: rgba(99,102,241,.7) !important;
     box-shadow: 0 0 0 3px rgba(99,102,241,.12);
   }
 
-  /* ── Tags ── */
   .tag { border-radius: 7px; font-size: 11px; font-weight: 600; padding: 2px 7px; display:inline-flex; align-items:center; }
   .tag-indigo { background:rgba(99,102,241,.12); border:1px solid rgba(99,102,241,.25); color:#A5B4FC; }
   
-  /* ── Logo ── */
   .logo-ring {
     border-radius:12px;
     background:linear-gradient(135deg,#6366F1,#22D3EE);
@@ -105,7 +97,6 @@ const MEMBERS_STYLES = `
     flex-shrink:0;
   }
 
-  /* ── Breadcrumb ── */
   .breadcrumb {
     background:none; border:none; color:#6366F1; font-size:12px;
     font-weight:600; cursor:pointer; font-family:inherit; padding:0;
@@ -120,7 +111,7 @@ const MEMBERS_STYLES = `
 `;
 
 export default function Members() {
-  const { workspaceId } = useParams();
+  const { workspaceId } = useParams<{ workspaceId: string }>();
   const navigate = useNavigate();
 
   const [members, setMembers] = useState<Member[]>([]);
@@ -128,7 +119,6 @@ export default function Members() {
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserSearchResult | null>(null);
 
-  // Inject CSS once
   useEffect(() => {
     const tag = document.createElement("style");
     tag.innerHTML = MEMBERS_STYLES;
@@ -137,32 +127,38 @@ export default function Members() {
   }, []);
 
   const fetchMembers = async () => {
+    if (!workspaceId) return;
     try {
       const response = await api.get(`/workspaces/${workspaceId}/members`);
       setMembers(response.data);
     } catch (error) {
-      console.error(error);
+      console.error("Failed to fetch members:", error);
     }
   };
 
+  // Fixed Debounced Search Effect logic loop
   useEffect(() => {
+    if (!workspaceId) return;
+
+    if (searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
     const delayDebounceFn = setTimeout(async () => {
-      if (searchQuery.trim().length >= 2) {
-        try {
-          const response = await api.get(`/workspaces/${workspaceId}/search-users?q=${searchQuery}`);
-          setSearchResults(response.data);
-        } catch (error) {
-          console.error("User search failed", error);
-        }
-      } else {
-        if (searchResults.length > 0) setSearchResults([]);
+      try {
+        const response = await api.get(`/workspaces/${workspaceId}/search-users?q=${searchQuery}`);
+        setSearchResults(response.data);
+      } catch (error) {
+        console.error("User search failed", error);
       }
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, workspaceId, searchResults.length]);
+  }, [searchQuery, workspaceId]);
 
   const addMember = async () => {
+    if (!workspaceId) return;
     try {
       if (!selectedUser) {
         alert("Please select a user from the search list");
@@ -183,6 +179,7 @@ export default function Members() {
   };
 
   const removeMember = async (userId: number) => {
+    if (!workspaceId) return;
     try {
       await api.delete(`/workspaces/${workspaceId}/members/${userId}`);
       fetchMembers();
@@ -218,7 +215,7 @@ export default function Members() {
         ))}
       </div>
 
-      {/* ── Navbar ── */}
+      {/* Navbar */}
       <nav className="members-navbar">
         <div style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
@@ -244,7 +241,7 @@ export default function Members() {
         </div>
       </nav>
 
-      {/* ── Content Layout Canvas ── */}
+      {/* Content Canvas */}
       <div style={{
         flex: 1,
         marginTop: 60,
@@ -261,8 +258,8 @@ export default function Members() {
             Team Members
           </h1>
 
-          {/* Add Member Component Card */}
-          <div className="content-card" style={{ animation: "fadeUp .4s .06s ease both" }}>
+          {/* Add Member Box */}
+          <div className="content-card" style={{ animation: "fadeUp .4s .06s ease both", position: "relative", zIndex: 20 }}>
             <h2 style={{ fontSize: 16, fontWeight: 700, color: "#F1F5F9", marginBottom: 16, letterSpacing: "-0.2px" }}>
               Add Workspace Member
             </h2>
@@ -284,12 +281,15 @@ export default function Members() {
                 />
                 {selectedUser && (
                   <button
-                    onClick={() => setSelectedUser(null)}
+                    onClick={() => {
+                      setSelectedUser(null);
+                      setSearchQuery("");
+                    }}
                     style={{
                       position: "absolute", right: 12, top: 10,
                       background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.1)",
                       color: "#94A3B8", borderRadius: 8, padding: "4px 10px", fontSize: 11,
-                      fontWeight: 600, cursor: "pointer", fontFamily: "inherit"
+                      fontWeight: 600, cursor: "pointer", fontFamily: "inherit", zIndex: 1
                     }}
                   >
                     Clear
@@ -301,8 +301,8 @@ export default function Members() {
                   <div className="dropdown-scroll" style={{
                     position: "absolute", left: 0, right: 0, marginTop: 6,
                     background: "linear-gradient(145deg,#0D1830,#0A1220)",
-                    border: "1px solid rgba(99,102,241,.2)", borderRadius: 14,
-                    boxShadow: "0 20px 40px rgba(0,0,0,.5)", zIndex: 50,
+                    border: "1px solid rgba(99,102,241,.35)", borderRadius: 14,
+                    boxShadow: "0 20px 40px rgba(0,0,0,.7)", zIndex: 999,
                     maxHeight: "200px", overflowY: "auto"
                   }}>
                     {searchResults.map((user) => (
@@ -342,7 +342,7 @@ export default function Members() {
           </div>
 
           {/* Members List Container */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", position: "relative", zIndex: 1 }}>
             {members.map((member, idx) => (
               <div
                 key={member.id}
@@ -377,7 +377,6 @@ export default function Members() {
               </div>
             ))}
 
-            {/* Empty view state style matching BoardPage */}
             {members.length === 0 && (
               <div style={{
                 textAlign: "center", border: "1px dashed rgba(99,102,241,.2)", borderRadius: 24,
