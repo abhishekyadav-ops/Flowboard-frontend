@@ -5,15 +5,191 @@ import api from "../services/api";
 interface Board {
   id: number;
   name: string;
-  created_by: number; // 🌟 Points to the user id number
-  
-  // 🌟 The nested owner profile we are fetching from the backend relation
-  owner?: {
-    id: number;
-    name: string;
-    email: string;
-  };
+  created_by: number;
+  owner?: { id: number; name: string; email: string };
 }
+
+// ─── Global styles ────────────────────────────────────────────────────────────
+const BOARDS_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
+
+  @keyframes aurora {
+    0%   { transform: translate(0%,0%)   scale(1);    opacity: .55; }
+    33%  { transform: translate(4%,-6%)  scale(1.06); opacity: .45; }
+    66%  { transform: translate(-3%,5%)  scale(.97);  opacity: .60; }
+    100% { transform: translate(0%,0%)   scale(1);    opacity: .55; }
+  }
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(18px); }
+    to   { opacity:1; transform:translateY(0);    }
+  }
+  @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
+  @keyframes spin    { to { transform:rotate(360deg); } }
+
+  /* ── Board cards ── */
+  .board-card {
+    background: linear-gradient(145deg,#0D1830 0%,#0A1220 100%);
+    border: 1px solid rgba(99,102,241,.12);
+    border-radius: 20px;
+    padding: 22px;
+    cursor: pointer;
+    transition: transform .35s cubic-bezier(.22,.68,0,1.2),
+                box-shadow .35s ease, border-color .35s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 180px;
+    position: relative;
+    overflow: hidden;
+  }
+  .board-card::before {
+    content:'';
+    position:absolute; inset:0;
+    background:radial-gradient(ellipse at 120% 0%,rgba(99,102,241,.08) 0%,transparent 60%);
+    pointer-events:none;
+    transition:opacity .35s;
+    opacity:0;
+  }
+  @media (hover:hover) {
+    .board-card:hover::before { opacity:1; }
+    .board-card:hover {
+      transform:translateY(-5px) scale(1.01);
+      border-color:rgba(99,102,241,.45);
+      box-shadow:0 20px 60px rgba(99,102,241,.12),0 4px 20px rgba(0,0,0,.4);
+    }
+    .board-card:hover .hover-actions { opacity:1; }
+    .hover-actions { opacity:0; transition:opacity .2s; }
+  }
+  @media (hover:none) {
+    .hover-actions { opacity:1 !important; }
+  }
+
+  /* ── Input focus ── */
+  .input-glow:focus {
+    outline:none;
+    border-color:rgba(99,102,241,.7) !important;
+    box-shadow:0 0 0 3px rgba(99,102,241,.12);
+  }
+
+  /* ── Primary button ── */
+  .btn-primary {
+    background:linear-gradient(135deg,#6366F1 0%,#4F46E5 100%);
+    border:none; border-radius:14px; color:#fff;
+    font-weight:600; font-size:14px; padding:12px 22px;
+    cursor:pointer; transition:filter .2s,transform .15s;
+    white-space:nowrap; min-height:44px; font-family:inherit;
+  }
+  @media (hover:hover) {
+    .btn-primary:hover { filter:brightness(1.15); transform:translateY(-1px); }
+  }
+  .btn-primary:active { transform:translateY(0); filter:brightness(.95); }
+
+  /* ── Ghost button ── */
+  .btn-ghost {
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.08);
+    color:#94A3B8; border-radius:12px;
+    font-weight:600; font-size:13px; padding:9px 16px;
+    cursor:pointer; transition:background .2s,color .2s,border-color .2s;
+    white-space:nowrap; min-height:40px; font-family:inherit;
+  }
+  @media (hover:hover) {
+    .btn-ghost:hover { background:rgba(99,102,241,.12); color:#A5B4FC; border-color:rgba(99,102,241,.3); }
+  }
+
+  /* ── Danger button ── */
+  .btn-danger {
+    background:rgba(239,68,68,.10);
+    border:1px solid rgba(239,68,68,.25);
+    color:#F87171; border-radius:12px;
+    font-weight:600; font-size:13px; padding:9px 16px;
+    cursor:pointer; transition:background .2s; white-space:nowrap;
+    min-height:40px; font-family:inherit;
+  }
+  @media (hover:hover) {
+    .btn-danger:hover { background:rgba(239,68,68,.2); }
+  }
+
+  /* ── Tag ── */
+  .tag-indigo {
+    background:rgba(99,102,241,.12); border:1px solid rgba(99,102,241,.25);
+    color:#A5B4FC; border-radius:8px; font-size:11px; font-weight:600;
+    padding:2px 8px; display:inline-flex; align-items:center;
+  }
+
+  /* ── Logo ── */
+  .logo-ring {
+    border-radius:14px;
+    background:linear-gradient(135deg,#6366F1,#22D3EE);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; color:#fff;
+    box-shadow:0 4px 20px rgba(99,102,241,.4);
+    flex-shrink:0;
+  }
+
+  /* ── Grids ── */
+  .boards-grid {
+    display:grid; gap:18px; grid-template-columns:1fr;
+  }
+  @media (min-width:560px)  { .boards-grid { grid-template-columns:repeat(2,1fr); } }
+  @media (min-width:1024px) { .boards-grid { grid-template-columns:repeat(3,1fr); } }
+
+  /* ── Create row ── */
+  .create-row { display:flex; flex-direction:column; gap:12px; }
+  @media (min-width:480px) { .create-row { flex-direction:row; } }
+  .create-row .btn-primary { width:100%; }
+  @media (min-width:480px) { .create-row .btn-primary { width:auto; } }
+
+  /* ── Navbar ── */
+  .boards-navbar {
+    position:fixed; top:0; left:0; right:0; z-index:100;
+    background:rgba(5,10,20,.85);
+    backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+    border-bottom:1px solid rgba(255,255,255,.06);
+    height:64px; display:flex; align-items:center;
+    padding-left:max(16px, env(safe-area-inset-left));
+    padding-right:max(16px, env(safe-area-inset-right));
+    animation:fadeIn .4s ease both;
+  }
+  @media (min-width:640px) { .boards-navbar { padding:0 40px; height:68px; } }
+
+  /* ── Nav inner ── */
+  .nav-inner {
+    width:100%; max-width:1200px; margin:0 auto;
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+  }
+
+  /* ── Nav actions: stack on tiny screens ── */
+  .nav-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+
+  /* ── Breadcrumb ── */
+  .breadcrumb {
+    font-size:12px; color:#6366F1; font-weight:600;
+    background:none; border:none; cursor:pointer;
+    font-family:inherit; padding:0; transition:color .2s;
+  }
+  @media (hover:hover) { .breadcrumb:hover { color:#818CF8; } }
+
+  /* ── Page content ── */
+  .boards-content {
+    max-width:1200px; margin:0 auto;
+    padding:80px 16px 60px;
+    padding-bottom:max(60px, env(safe-area-inset-bottom));
+    position:relative; z-index:1;
+  }
+  @media (min-width:640px)  { .boards-content { padding:96px 32px 60px; } }
+  @media (min-width:1024px) { .boards-content { padding:104px 40px 60px; } }
+
+  /* ── Reduced motion ── */
+  @media (prefers-reduced-motion:reduce) {
+    .board-card, .btn-primary { transition:none; }
+    .aurora-blob { animation:none !important; }
+  }
+`;
 
 function Boards() {
   const { workspaceId } = useParams();
@@ -22,244 +198,306 @@ function Boards() {
   const [boards, setBoards] = useState<Board[]>([]);
   const [boardName, setBoardName] = useState("");
   const [loading, setLoading] = useState(true);
-  
-  // 🌟 Added: Track current user local state so permissions check functions cleanly
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [mounted, setMounted] = useState(false);
 
-  // Core data fetcher with an optional 'silent' parameter to refresh background listings smoothly
+  // Inject styles once
+  useEffect(() => {
+    const tag = document.createElement("style");
+    tag.innerHTML = BOARDS_STYLES;
+    document.head.appendChild(tag);
+    return () => { document.head.removeChild(tag); };
+  }, []);
+
+  // ── Data fetching ─────────────────────────────────────────────────────────
   const fetchBoards = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      const response = await api.get(`/boards/workspace/${workspaceId}`);
-      setBoards(response.data);
-    } catch (error: any) {
-      alert(error?.response?.data?.detail || "Failed to load project boards");
+      const res = await api.get(`/boards/workspace/${workspaceId}`);
+      setBoards(res.data);
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || "Failed to load project boards");
     } finally {
       setLoading(false);
+      setMounted(true);
     }
   };
 
-  // 🌟 Added: Extract user info from local token state to verify permissions matching
   const fetchCurrentUser = async () => {
     try {
-      const response = await api.get("/users/me"); // Adjust path if your profile endpoint differs
-      setCurrentUserId(response.data.id);
-    } catch (error) {
-      console.error("Could not fetch user context profile", error);
-    }
+      const res = await api.get("/users/me");
+      setCurrentUserId(res.data.id);
+    } catch (e) { console.error("Could not fetch user", e); }
   };
 
   const createBoard = async () => {
+    if (!boardName.trim()) { alert("Please enter a board name"); return; }
     try {
-      if (!boardName.trim()) {
-        alert("Please enter a board name");
-        return;
-      }
-
-      await api.post("/boards/", {
-        workspace_id: Number(workspaceId),
-        name: boardName.trim(),
-        description: ""
-      });
-
+      await api.post("/boards/", { workspace_id: Number(workspaceId), name: boardName.trim(), description: "" });
       setBoardName("");
-      await fetchBoards(true); // Silent reload after creating
-    } catch (error: any) {
-      alert(error?.response?.data?.detail || "Failed to create board");
-    }
+      await fetchBoards(true);
+    } catch (e: any) { alert(e?.response?.data?.detail || "Failed to create board"); }
   };
 
-  // Handler to update board names
   const handleUpdateBoard = async (boardId: number, updatedName: string) => {
     try {
       await api.put(`/boards/${boardId}`, { name: updatedName });
-      await fetchBoards(true); // Silent reload after updating
-    } catch (error: any) {
-      alert(error?.response?.data?.detail || "Failed to update board");
-    }
+      await fetchBoards(true);
+    } catch (e: any) { alert(e?.response?.data?.detail || "Failed to update board"); }
   };
 
-  // Handler to delete boards
   const handleDeleteBoard = async (boardId: number) => {
     try {
       await api.delete(`/boards/${boardId}`);
-      await fetchBoards(true); // Silent reload after deletion
-    } catch (error: any) {
-      alert(error?.response?.data?.detail || "Failed to delete board");
-    }
+      await fetchBoards(true);
+    } catch (e: any) { alert(e?.response?.data?.detail || "Failed to delete board"); }
   };
 
   useEffect(() => {
-    if (workspaceId) {
-      fetchCurrentUser();
-      fetchBoards();
-    }
+    if (workspaceId) { fetchCurrentUser(); fetchBoards(); }
   }, [workspaceId]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#030712] flex items-center justify-center text-white">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-slate-400 font-medium">Loading Boards...</p>
-        </div>
+  // ── Loading ───────────────────────────────────────────────────────────────
+  if (loading) return (
+    <div style={{ minHeight:"100vh", background:"#050A14", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"Inter,sans-serif" }}>
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
+        <div style={{ width:44, height:44, borderRadius:"50%", border:"3px solid rgba(99,102,241,.2)", borderTopColor:"#6366F1", animation:"spin .8s linear infinite" }} />
+        <p style={{ color:"#64748B", fontSize:14, fontWeight:500 }}>Loading Boards…</p>
       </div>
-    );
-  }
+    </div>
+  );
 
+  const fadeUp = (delay: string): React.CSSProperties =>
+    mounted ? { animation:`fadeUp .5s ${delay} ease both` } : { opacity:0 };
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#030712] text-white">
-      {/* Header */}
-      <div className="border-b border-slate-800 bg-[#020817]">
-        <div className="max-w-7xl mx-auto px-8 py-6 flex justify-between items-center">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <button 
-                onClick={() => navigate("/dashboard")}
-                className="text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors"
-              >
-                &larr; Workspaces
+    <div style={{ minHeight:"100vh", background:"#050A14", color:"#E2E8F0", fontFamily:"Inter,sans-serif", position:"relative", overflowX:"hidden" }}>
+
+      {/* Aurora blobs */}
+      <div style={{ position:"fixed", inset:0, pointerEvents:"none", zIndex:0 }}>
+        {[
+          { top:"-20%", left:"10%",  w:600, h:600, color:"rgba(99,102,241,.18)", dur:"18s", delay:"0s",  rev:false },
+          { top:"60%",  right:"5%", w:500, h:500, color:"rgba(34,211,238,.12)", dur:"22s", delay:"0s",  rev:true  },
+          { top:"35%",  left:"55%", w:380, h:380, color:"rgba(139,92,246,.10)", dur:"28s", delay:"4s",  rev:false },
+        ].map((b, i) => (
+          <div key={i} className="aurora-blob" style={{
+            position:"absolute",
+            top:b.top, left:(b as any).left, right:(b as any).right,
+            width:b.w, height:b.h, borderRadius:"50%",
+            background:`radial-gradient(ellipse,${b.color} 0%,transparent 70%)`,
+            animation:`aurora ${b.dur} ease-in-out infinite ${b.delay}${b.rev ? " reverse" : ""}`,
+            filter:"blur(45px)",
+          }} />
+        ))}
+      </div>
+
+      {/* ── Navbar ── */}
+      <nav className="boards-navbar">
+        <div className="nav-inner">
+          {/* Left: logo + breadcrumb */}
+          <div style={{ display:"flex", alignItems:"center", gap:14, minWidth:0 }}>
+            <div className="logo-ring" style={{ width:40, height:40, fontSize:18 }}>F</div>
+            <div style={{ minWidth:0 }}>
+              <button className="breadcrumb" onClick={() => navigate("/dashboard")}>
+                ← Workspaces
               </button>
+              <div style={{ fontSize:16, fontWeight:800, color:"#F1F5F9", letterSpacing:"-0.4px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                Workspace Boards
+              </div>
             </div>
-            <h1 className="text-4xl font-bold">Workspace Boards</h1>
-            <p className="text-slate-400 mt-1">Create and manage project boards</p>
           </div>
 
-          <div className="flex gap-3 items-center">
+          {/* Right: actions */}
+          <div className="nav-actions">
             <button
-              onClick={() => {
-                localStorage.removeItem("token");
-                navigate("/login");
-              }}
-              className="bg-red-600/90 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl font-medium text-sm transition-colors shadow-lg shadow-red-950/20"
+              className="btn-ghost"
+              onClick={() => navigate(`/workspaces/${workspaceId}/members`)}
             >
-              Logout
+              Members
             </button>
             <button
-              onClick={() => navigate(`/workspaces/${workspaceId}/members`)}
-              className="bg-indigo-600 hover:bg-indigo-700 px-5 py-2.5 rounded-xl font-medium text-sm transition-colors"
+              className="btn-danger"
+              onClick={() => { localStorage.removeItem("token"); navigate("/login"); }}
             >
-              Manage Members
+              Sign out
             </button>
           </div>
         </div>
-      </div>
+      </nav>
 
-      <div className="max-w-7xl mx-auto px-8 py-8">
-        {/* Create Board */}
-        <div className="bg-[#111827] border border-slate-800 rounded-2xl p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Create New Board</h2>
-          <div className="flex gap-3">
+      {/* ── Content ── */}
+      <div className="boards-content">
+
+        {/* Hero */}
+        <div style={{ marginBottom:32, ...fadeUp("0s") }}>
+          <p style={{ fontSize:12, color:"#6366F1", fontWeight:700, letterSpacing:"0.12em", textTransform:"uppercase", marginBottom:8 }}>
+            Project Boards
+          </p>
+          <h1 style={{ fontSize:"clamp(24px,5vw,34px)", fontWeight:800, letterSpacing:"-0.8px", color:"#F1F5F9", lineHeight:1.1, marginBottom:6 }}>
+            Build your workflow
+          </h1>
+          <p style={{ color:"#475569", fontSize:"clamp(13px,2vw,15px)" }}>
+            Create and manage boards to track every piece of work.
+          </p>
+        </div>
+
+        {/* Create board */}
+        <div style={{
+          background:"linear-gradient(145deg,#0D1830 0%,#0A1220 100%)",
+          border:"1px solid rgba(99,102,241,.18)", borderRadius:20,
+          padding:"22px", marginBottom:36, ...fadeUp("0.1s"),
+        }}>
+          <p style={{ fontSize:11, fontWeight:700, color:"#6366F1", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:14 }}>
+            New Board
+          </p>
+          <div className="create-row">
             <input
               type="text"
-              placeholder="Enter board name... (Press Enter to create)"
+              placeholder="Give your board a name…"
               value={boardName}
-              onChange={(e) => setBoardName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  createBoard();
-                }
+              onChange={e => setBoardName(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") createBoard(); }}
+              className="input-glow"
+              style={{
+                flex:1, background:"rgba(5,10,20,.60)", border:"1px solid rgba(255,255,255,.08)",
+                borderRadius:14, padding:"12px 16px", color:"#E2E8F0", fontSize:14,
+                fontFamily:"inherit", transition:"border-color .2s,box-shadow .2s", minHeight:44,
               }}
-              className="flex-1 bg-[#0F172A] border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
             />
-            <button
-              onClick={createBoard}
-              className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl font-semibold transition"
-            >
-              Create Board
-            </button>
+            <button className="btn-primary" onClick={createBoard}>+ Create</button>
           </div>
         </div>
 
+        {/* Section header */}
+        <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20, ...fadeUp("0.16s") }}>
+          <span style={{ fontSize:"clamp(17px,3vw,21px)", fontWeight:700, color:"#E2E8F0", letterSpacing:"-0.4px" }}>
+            All Boards
+          </span>
+          <span style={{
+            background:"rgba(99,102,241,.15)", border:"1px solid rgba(99,102,241,.25)",
+            color:"#818CF8", borderRadius:20, fontSize:12, fontWeight:700, padding:"2px 10px",
+          }}>
+            {boards.length}
+          </span>
+        </div>
 
-        {/* Boards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {boards.map((board) => (
+        {/* Boards grid */}
+        <div className="boards-grid">
+          {boards.map((board, i) => (
             <div
               key={board.id}
-              onClick={() =>
-                navigate(`/boards/${board.id}`, {
-                  state: { workspaceId },
-                })
-              }
-              className="bg-[#111827] border border-slate-800 rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:border-blue-500/80 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-900/10 flex flex-col justify-between h-44 group"
+              className="board-card"
+              onClick={() => navigate(`/boards/${board.id}`, { state:{ workspaceId } })}
+              style={mounted ? { animation:`fadeUp .5s ${0.05*i+0.22}s ease both` } : { opacity:0 }}
             >
-              <div className="flex justify-between items-start gap-3">
-                {/* 🌟 WRAPPED HEADER: Organizes Board Name and the new Creator Badge cleanly */}
-                <div className="flex flex-col gap-1 max-w-[70%]">
-                  <h3 className="text-xl font-semibold text-slate-200 group-hover:text-white transition-colors truncate">
+              {/* Top */}
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:10 }}>
+                <div style={{ display:"flex", flexDirection:"column", gap:5, minWidth:0, flex:1 }}>
+                  <span style={{
+                    fontSize:"clamp(14px,2.5vw,17px)", fontWeight:700, color:"#E2E8F0",
+                    letterSpacing:"-0.3px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
+                  }}>
                     {board.name}
-                  </h3>
-                  
-                  {/* 🌟 NEW ELEMENT: Dynamic Board Creator Badge */}
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[11px] text-slate-500 font-medium">Created By:</span>
-                    <span className="inline-flex items-center bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.2 rounded text-[11px] font-semibold text-indigo-400">
-                      {board.owner?.name || "Board Creator"}
-                    </span>
+                  </span>
+                  <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+                    <span style={{ fontSize:10, color:"#475569", fontWeight:500 }}>Created by</span>
+                    <span className="tag-indigo">{board.owner?.name || "Board Creator"}</span>
                   </div>
                 </div>
-
-                <span className="bg-slate-800 text-slate-400 border border-slate-700/50 px-2.5 py-0.5 rounded-lg text-xs font-mono font-medium shrink-0">
+                <span style={{
+                  background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.07)",
+                  color:"#475569", borderRadius:8, fontSize:10, fontWeight:600,
+                  fontFamily:"monospace", padding:"3px 8px", flexShrink:0,
+                }}>
                   #{board.id}
                 </span>
               </div>
 
-              {/* Card Footer Actions Row */}
-              <div className="flex justify-between items-center pt-4 border-t border-slate-800/40 mt-auto">
-                <p className="text-xs text-blue-400 font-medium group-hover:text-blue-300 transition-colors">
-                  Open Board &rarr;
-                </p>
+              {/* Bottom */}
+              <div style={{
+                display:"flex", justifyContent:"space-between", alignItems:"center",
+                paddingTop:14, borderTop:"1px solid rgba(255,255,255,.05)", marginTop:"auto",
+                flexWrap:"wrap", gap:8,
+              }}>
+                <span style={{ fontSize:12, color:"#6366F1", fontWeight:600 }}>Open Board →</span>
 
-                {/* Actions Button Container (Revealed smoothly on item hover) */}
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                  
-                  {/* 🌟 EDIT BUTTON: Secure. Only visible to the owner/creator */}
-                  {currentUserId === board.created_by && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation(); // Stops routing navigation event
+                {currentUserId === board.created_by && (
+                  <div className="hover-actions" style={{ display:"flex", gap:8 }}>
+                    <BoardActionBtn
+                      label="Edit"
+                      color="#818CF8"
+                      bg="rgba(99,102,241,.08)"
+                      hoverBg="rgba(99,102,241,.2)"
+                      border="rgba(99,102,241,.2)"
+                      onClick={e => {
+                        e.stopPropagation();
                         const newName = window.prompt("Enter new board name:", board.name);
                         if (newName && newName.trim() && newName !== board.name) {
                           handleUpdateBoard(board.id, newName.trim());
                         }
                       }}
-                      className="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
-                    >
-                      Edit
-                    </button>
-                  )}
-
-                  {/* 🌟 DELETE BUTTON: Secure. Only visible to the owner/creator */}
-                  {currentUserId === board.created_by && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation(); // Stops routing navigation event
-                        if (window.confirm(`Are you sure you want to delete "${board.name}"?`)) {
+                    />
+                    <BoardActionBtn
+                      label="Delete"
+                      color="#F87171"
+                      bg="rgba(239,68,68,.08)"
+                      hoverBg="rgba(239,68,68,.2)"
+                      border="rgba(239,68,68,.2)"
+                      onClick={e => {
+                        e.stopPropagation();
+                        if (window.confirm(`Delete "${board.name}"? This cannot be undone.`)) {
                           handleDeleteBoard(board.id);
                         }
                       }}
-                      className="bg-slate-900 hover:bg-red-950/30 text-slate-400 hover:text-red-400 border border-slate-800 hover:border-red-900/40 px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
-                    >
-                      Delete
-                    </button>
-                  )}
-                  
-                </div>
+                    />
+                  </div>
+                )}
               </div>
             </div>
           ))}
         </div>
 
-        {/* Empty state placeholder */}
+        {/* Empty state */}
         {boards.length === 0 && (
-          <div className="text-slate-400 text-center py-16 bg-[#111827]/40 border border-dashed border-slate-800 rounded-2xl">
-            <p className="text-lg font-medium">No project boards created yet.</p>
-            <p className="text-sm text-slate-500 mt-1">Initialize your workflow by spinning up a new tracking board above.</p>
+          <div style={{
+            textAlign:"center", padding:"56px 24px",
+            border:"1px dashed rgba(99,102,241,.2)", borderRadius:24,
+            background:"rgba(99,102,241,.03)", animation:"fadeUp .5s ease both",
+          }}>
+            <div style={{ fontSize:36, marginBottom:14, opacity:.4 }}>⬡</div>
+            <p style={{ fontSize:17, fontWeight:600, color:"#475569", marginBottom:6 }}>No boards yet</p>
+            <p style={{ fontSize:13, color:"#334155" }}>Create your first board above to start tracking work.</p>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+// ─── Small action button ──────────────────────────────────────────────────────
+function BoardActionBtn({
+  label, color, bg, hoverBg, border, onClick,
+}: {
+  label: string; color: string; bg: string; hoverBg: string; border: string;
+  onClick: (e: React.MouseEvent) => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: hovered ? hoverBg : bg,
+        border:`1px solid ${border}`, color,
+        borderRadius:10, padding:"6px 12px", fontSize:12, fontWeight:600,
+        cursor:"pointer", fontFamily:"inherit", transition:"background .2s",
+        minHeight:34, minWidth:44,
+      }}
+    >
+      {label}
+    </button>
   );
 }
 
