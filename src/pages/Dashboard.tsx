@@ -17,7 +17,8 @@ interface DashboardStats {
   teamMembers: number;
 }
 
-const GLOBAL_STYLES = `
+// ─── Global styles mirroring Boards page theme ───────────────────────────────
+const DASHBOARD_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -34,55 +35,96 @@ const GLOBAL_STYLES = `
     from { opacity:0; transform:translateY(18px); }
     to   { opacity:1; transform:translateY(0);    }
   }
-  @keyframes fadeIn {
-    from { opacity:0; }
-    to   { opacity:1; }
-  }
-  @keyframes spin { to { transform:rotate(360deg); } }
-  @keyframes pulse {
-    0%,100% { opacity:1; }
-    50%     { opacity:.5; }
-  }
+  @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
+  @keyframes scaleIn { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
+  @keyframes spin    { to { transform:rotate(360deg); } }
+  @keyframes pulse   { 0%,100% { opacity:1; } 50% { opacity:.5; } }
 
-  .ws-card {
+  /* ── Workspace cards (matching board-card layout structures) ── */
+  .workspace-card {
     background: linear-gradient(145deg,#0D1830 0%,#0A1220 100%);
     border: 1px solid rgba(99,102,241,.12);
     border-radius: 20px;
     padding: 22px;
     cursor: pointer;
     transition: transform .35s cubic-bezier(.22,.68,0,1.2),
-                box-shadow .35s ease,
-                border-color .35s ease;
+                box-shadow .35s ease, border-color .35s ease;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    min-height: 190px;
+    min-height: 180px;
     position: relative;
     overflow: hidden;
   }
-  .ws-card::before {
+  .workspace-card::before {
     content:'';
     position:absolute; inset:0;
-    background:radial-gradient(ellipse at 120% 0%,rgba(99,102,241,.07) 0%,transparent 60%);
+    background:radial-gradient(ellipse at 120% 0%,rgba(99,102,241,.08) 0%,transparent 60%);
     pointer-events:none;
     transition:opacity .35s;
     opacity:0;
   }
-
   @media (hover:hover) {
-    .ws-card:hover::before { opacity:1; }
-    .ws-card:hover {
+    .workspace-card:hover::before { opacity:1; }
+    .workspace-card:hover {
       transform:translateY(-5px) scale(1.01);
       border-color:rgba(99,102,241,.45);
       box-shadow:0 20px 60px rgba(99,102,241,.12),0 4px 20px rgba(0,0,0,.4);
     }
-    .ws-card:hover .action-btn { opacity:1; }
-    .action-btn { opacity:0; transition:opacity .2s; }
+    .workspace-card:hover .hover-actions { opacity:1; }
+    .hover-actions { opacity:0; transition:opacity .2s; }
   }
   @media (hover:none) {
-    .action-btn { opacity:1 !important; }
+    .hover-actions { opacity:1 !important; }
   }
 
+  /* ── Input focus ── */
+  .input-glow:focus {
+    outline:none;
+    border-color:rgba(99,102,241,.7) !important;
+    box-shadow:0 0 0 3px rgba(99,102,241,.12);
+  }
+
+  /* ── Primary button ── */
+  .btn-primary {
+    background:linear-gradient(135deg,#6366F1 0%,#4F46E5 100%);
+    border:none; border-radius:14px; color:#fff;
+    font-weight:600; font-size:14px; padding:12px 22px;
+    cursor:pointer; transition:filter .2s,transform .15s;
+    white-space:nowrap; min-height:44px; font-family:inherit;
+  }
+  @media (hover:hover) {
+    .btn-primary:hover { filter:brightness(1.15); transform:translateY(-1px); }
+  }
+  .btn-primary:active { transform:translateY(0); filter:brightness(.95); }
+
+  /* ── Ghost button ── */
+  .btn-ghost {
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.08);
+    color:#94A3B8; border-radius:12px;
+    font-weight:600; font-size:13px; padding:9px 16px;
+    cursor:pointer; transition:background .2s,color .2s,border-color .2s;
+    white-space:nowrap; min-height:40px; font-family:inherit;
+  }
+  @media (hover:hover) {
+    .btn-ghost:hover { background:rgba(99,102,241,.12); color:#A5B4FC; border-color:rgba(99,102,241,.3); }
+  }
+
+  /* ── Danger button ── */
+  .btn-danger {
+    background:rgba(239,68,68,.10);
+    border:1px solid rgba(239,68,68,.25);
+    color:#F87171; border-radius:12px;
+    font-weight:600; font-size:13px; padding:9px 16px;
+    cursor:pointer; transition:background .2s; white-space:nowrap;
+    min-height:40px; font-family:inherit;
+  }
+  @media (hover:hover) {
+    .btn-danger:hover { background:rgba(239,68,68,.2); }
+  }
+
+  /* ── Stat cards ── */
   .stat-card {
     background:linear-gradient(145deg,#0D1830,#090E1A);
     border:1px solid rgba(255,255,255,.06);
@@ -91,43 +133,14 @@ const GLOBAL_STYLES = `
     animation:fadeUp .5s ease both;
   }
 
-  .input-glow:focus {
-    outline:none;
-    border-color:rgba(99,102,241,.7) !important;
-    box-shadow:0 0 0 3px rgba(99,102,241,.12);
-  }
-
-  .btn-primary {
-    background:linear-gradient(135deg,#6366F1 0%,#4F46E5 100%);
-    border:none;
-    border-radius:14px;
-    color:#fff;
-    font-weight:600;
-    font-size:14px;
-    padding:12px 22px;
-    cursor:pointer;
-    transition:filter .2s,transform .15s;
-    white-space:nowrap;
-    min-height:44px;
-    font-family:inherit;
-  }
-  @media (hover:hover) {
-    .btn-primary:hover { filter:brightness(1.15); transform:translateY(-1px); }
-  }
-  .btn-primary:active { transform:translateY(0); filter:brightness(.95); }
-
+  /* ── Tag ── */
   .tag-indigo {
-    background:rgba(99,102,241,.12);
-    border:1px solid rgba(99,102,241,.25);
-    color:#A5B4FC;
-    border-radius:8px;
-    font-size:11px;
-    font-weight:600;
-    padding:2px 8px;
-    display:inline-flex;
-    align-items:center;
+    background:rgba(99,102,241,.12); border:1px solid rgba(99,102,241,.25);
+    color:#A5B4FC; border-radius:8px; font-size:11px; font-weight:600;
+    padding:2px 8px; display:inline-flex; align-items:center;
   }
 
+  /* ── Logo ── */
   .logo-ring {
     border-radius:14px;
     background:linear-gradient(135deg,#6366F1,#22D3EE);
@@ -137,80 +150,65 @@ const GLOBAL_STYLES = `
     flex-shrink:0;
   }
 
-  .ws-grid {
-    display:grid;
-    gap:18px;
-    grid-template-columns:1fr;
+  /* ── Grids ── */
+  .dashboard-grid {
+    display:grid; gap:18px; grid-template-columns:1fr;
   }
-  @media (min-width:560px) {
-    .ws-grid { grid-template-columns:repeat(2,1fr); }
-  }
-  @media (min-width:1024px) {
-    .ws-grid { grid-template-columns:repeat(3,1fr); }
-  }
+  @media (min-width:560px)  { .dashboard-grid { grid-template-columns:repeat(2,1fr); } }
+  @media (min-width:1024px) { .dashboard-grid { grid-template-columns:repeat(3,1fr); } }
 
   .stats-grid {
-    display:grid;
-    gap:14px;
-    grid-template-columns:repeat(3,1fr);
+    display:grid; gap:14px; grid-template-columns:repeat(3,1fr);
   }
-  @media (max-width:400px) {
-    .stats-grid { grid-template-columns:1fr; }
-  }
+  @media (max-width:400px) { .stats-grid { grid-template-columns:1fr; } }
 
-  .create-row {
-    display:flex;
-    flex-direction:column;
-    gap:12px;
-  }
-  @media (min-width:480px) {
-    .create-row { flex-direction:row; }
-  }
+  /* ── Create row ── */
+  .create-row { display:flex; flex-direction:column; gap:12px; }
+  @media (min-width:480px) { .create-row { flex-direction:row; } }
   .create-row .btn-primary { width:100%; }
-  @media (min-width:480px) {
-    .create-row .btn-primary { width:auto; }
-  }
+  @media (min-width:480px) { .create-row .btn-primary { width:auto; } }
 
-  .navbar {
-    position:fixed; top:0; left:0; right:0;
-    z-index:100;
+  /* ── Navbar ── */
+  .dashboard-navbar {
+    position:fixed; top:0; left:0; right:0; z-index:100;
     background:rgba(5,10,20,.85);
-    backdrop-filter:blur(20px);
-    -webkit-backdrop-filter:blur(20px);
+    backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
     border-bottom:1px solid rgba(255,255,255,.06);
-    height:64px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    padding-left: max(20px, env(safe-area-inset-left));
-    padding-right: max(20px, env(safe-area-inset-right));
+    height:64px; display:flex; align-items:center;
+    padding-left:max(16px, env(safe-area-inset-left));
+    padding-right:max(16px, env(safe-area-inset-right));
     animation:fadeIn .4s ease both;
   }
-  @media (min-width:640px) {
-    .navbar { padding:0 40px; height:68px; }
+  @media (min-width:640px) { .dashboard-navbar { padding:0 40px; height:68px; } }
+
+  .nav-inner {
+    width:100%; max-width:1200px; margin:0 auto;
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
   }
 
-  .page-content {
-    max-width:1200px;
-    margin:0 auto;
+  .nav-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+
+  /* ── Page content ── */
+  .dashboard-content {
+    max-width:1200px; margin:0 auto;
     padding:80px 16px 60px;
-    padding-bottom: max(60px, env(safe-area-inset-bottom));
+    padding-bottom:max(60px, env(safe-area-inset-bottom));
+    position:relative; z-index:1;
   }
-  @media (min-width:640px) {
-    .page-content { padding:96px 32px 60px; }
-  }
-  @media (min-width:1024px) {
-    .page-content { padding:104px 40px 60px; }
-  }
+  @media (min-width:640px)  { .dashboard-content { padding:96px 32px 60px; } }
+  @media (min-width:1024px) { .dashboard-content { padding:104px 40px 60px; } }
 
+  /* ── Reduced motion ── */
   @media (prefers-reduced-motion:reduce) {
-    .ws-card, .btn-primary { transition:none; }
+    .workspace-card, .btn-primary { transition:none; }
     .aurora-blob { animation:none !important; }
-    .stat-card, .fade-up-item { animation:none !important; opacity:1 !important; }
+    .stat-card { animation:none !important; opacity:1 !important; }
   }
 `;
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [workspaceName, setWorkspaceName] = useState("");
   const [stats, setStats] = useState<DashboardStats>({ activeBoards: 0, teamMembers: 0 });
@@ -220,16 +218,17 @@ export default function Dashboard() {
   const [editingWorkspaceId, setEditingWorkspaceId] = useState<number | null>(null);
   const [editNameValue, setEditNameValue] = useState("");
   const [mounted, setMounted] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  const navigate = useNavigate();
-
+  // Inject styles once
   useEffect(() => {
     const tag = document.createElement("style");
-    tag.innerHTML = GLOBAL_STYLES;
+    tag.innerHTML = DASHBOARD_STYLES;
     document.head.appendChild(tag);
     return () => { document.head.removeChild(tag); };
   }, []);
 
+  // ── Data fetching ─────────────────────────────────────────────────────────
   const fetchCurrentUser = async () => {
     try {
       const res = await api.get("/users/me");
@@ -274,6 +273,7 @@ export default function Dashboard() {
     fetchWorkspacesAndStats();
   }, []);
 
+  // ── Mutations ──────────────────────────────────────────────────────────────
   const createWorkspace = async () => {
     if (!workspaceName.trim()) { alert("Please enter a workspace name"); return; }
     try {
@@ -318,56 +318,56 @@ export default function Dashboard() {
       {/* Aurora blobs */}
       <div style={{ position:"fixed", inset:0, pointerEvents:"none", zIndex:0 }}>
         {[
-          { top:"-20%", left:"10%",   width:600, height:600, color:"rgba(99,102,241,.18)", dur:"18s", delay:"0s",  reverse:false },
-          { top:"60%",  right:"5%",   width:500, height:500, color:"rgba(34,211,238,.12)", dur:"22s", delay:"0s",  reverse:true  },
-          { top:"40%",  left:"50%",   width:400, height:400, color:"rgba(139,92,246,.10)", dur:"28s", delay:"4s",  reverse:false },
+          { top:"-20%", left:"10%",   w:600, h:600, color:"rgba(99,102,241,.18)", dur:"18s", delay:"0s",  rev:false },
+          { top:"60%",  right:"5%",   w:500, h:500, color:"rgba(34,211,238,.12)", dur:"22s", delay:"0s",  rev:true  },
+          { top:"35%",  left:"55%",   w:380, h:380, color:"rgba(139,92,246,.10)", dur:"28s", delay:"4s",  rev:false },
         ].map((b, i) => (
           <div key={i} className="aurora-blob" style={{
             position:"absolute",
-            top:b.top, left:b.left, right:(b as any).right,
-            width:b.width, height:b.height,
-            borderRadius:"50%",
+            top:b.top, left:(b as any).left, right:(b as any).right,
+            width:b.w, height:b.h, borderRadius:"50%",
             background:`radial-gradient(ellipse,${b.color} 0%,transparent 70%)`,
-            animation:`aurora ${b.dur} ease-in-out infinite ${b.delay}${b.reverse ? " reverse" : ""}`,
+            animation:`aurora ${b.dur} ease-in-out infinite ${b.delay}${b.rev ? " reverse" : ""}`,
             filter:"blur(45px)",
           }} />
         ))}
       </div>
 
-      {/* Navbar */}
-      <nav className="navbar">
-        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          <div className="logo-ring" style={{ width:42, height:42, fontSize:19 }}>F</div>
-          <div>
-            <div style={{ fontSize:18, fontWeight:800, letterSpacing:"-0.5px", color:"#F1F5F9", lineHeight:1.1 }}>FlowBoard</div>
-            <div style={{ fontSize:10, color:"#475569", fontWeight:600, letterSpacing:"0.06em", textTransform:"uppercase" as const }}>Project Management</div>
+      {/* ── Navbar ── */}
+      <nav className="dashboard-navbar">
+        <div className="nav-inner">
+          <div style={{ display:"flex", alignItems:"center", gap:14, minWidth:0 }}>
+            <div className="logo-ring" style={{ width:40, height:40, fontSize:18 }}>F</div>
+            <div>
+              <div style={{ fontSize:16, fontWeight:800, color:"#F1F5F9", letterSpacing:"-0.4px", lineHeight:1.1 }}>FlowBoard</div>
+              <div style={{ fontSize:10, color:"#475569", fontWeight:600, letterSpacing:"0.06em", textTransform:"uppercase" }}>Workspace Manager</div>
+            </div>
+          </div>
+
+          <div className="nav-actions">
+            <button
+              className="btn-danger"
+              onClick={() => setShowLogoutConfirm(true)}
+            >
+              Sign out
+            </button>
           </div>
         </div>
-        <button
-          onClick={() => { localStorage.removeItem("token"); navigate("/login"); }}
-          style={{
-            background:"rgba(239,68,68,.10)", border:"1px solid rgba(239,68,68,.25)", color:"#F87171",
-            borderRadius:12, padding:"8px 16px", fontSize:13, fontWeight:600,
-            cursor:"pointer", fontFamily:"inherit", minHeight:40, whiteSpace:"nowrap" as const,
-          }}
-        >
-          Sign out
-        </button>
       </nav>
 
-      {/* Page content */}
-      <div className="page-content" style={{ position:"relative", zIndex:1 }}>
+      {/* ── Content ── */}
+      <div className="dashboard-content">
 
         {/* Hero */}
         <div style={{ marginBottom:32, ...fadeUp("0s") }}>
-          <p style={{ fontSize:12, color:"#6366F1", fontWeight:700, letterSpacing:"0.12em", textTransform:"uppercase" as const, marginBottom:8 }}>
-            Welcome back
+          <p style={{ fontSize:12, color:"#6366F1", fontWeight:700, letterSpacing:"0.12em", textTransform:"uppercase", marginBottom:8 }}>
+            Welcome Back
           </p>
-          <h1 style={{ fontSize:"clamp(26px,5vw,36px)", fontWeight:800, letterSpacing:"-0.8px", color:"#F1F5F9", lineHeight:1.1, marginBottom:6 }}>
+          <h1 style={{ fontSize:"clamp(24px,5vw,34px)", fontWeight:800, letterSpacing:"-0.8px", color:"#F1F5F9", lineHeight:1.1, marginBottom:6 }}>
             Your Workspace Hub
           </h1>
           <p style={{ color:"#475569", fontSize:"clamp(13px,2vw,15px)" }}>
-            Everything your team is working on, beautifully organized.
+            Select or create spaces to stay in total control of your projects.
           </p>
         </div>
 
@@ -394,9 +394,9 @@ export default function Dashboard() {
         <div style={{
           background:"linear-gradient(145deg,#0D1830 0%,#0A1220 100%)",
           border:"1px solid rgba(99,102,241,.18)", borderRadius:20,
-          padding:"22px", marginBottom:36, ...fadeUp("0.14s"),
+          padding:"22px", marginBottom:36, ...fadeUp("0.12s"),
         }}>
-          <p style={{ fontSize:11, fontWeight:700, color:"#6366F1", letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:14 }}>
+          <p style={{ fontSize:11, fontWeight:700, color:"#6366F1", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:14 }}>
             New Workspace
           </p>
           <div className="create-row">
@@ -418,9 +418,9 @@ export default function Dashboard() {
         </div>
 
         {/* Section header */}
-        <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20, ...fadeUp("0.2s") }}>
-          <span style={{ fontSize:"clamp(18px,3vw,22px)", fontWeight:700, color:"#E2E8F0", letterSpacing:"-0.4px" }}>
-            My Workspaces
+        <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20, ...fadeUp("0.18s") }}>
+          <span style={{ fontSize:"clamp(17px,3vw,21px)", fontWeight:700, color:"#E2E8F0", letterSpacing:"-0.4px" }}>
+            All Workspaces
           </span>
           <span style={{
             background:"rgba(99,102,241,.15)", border:"1px solid rgba(99,102,241,.25)",
@@ -430,12 +430,12 @@ export default function Dashboard() {
           </span>
         </div>
 
-        {/* Workspace grid */}
-        <div className="ws-grid">
+        {/* Workspaces grid */}
+        <div className="dashboard-grid">
           {workspaces.map((ws, i) => (
             <div
               key={ws.id}
-              className="ws-card fade-up-item"
+              className="workspace-card"
               onClick={() => { if (editingWorkspaceId !== ws.id) navigate(`/workspaces/${ws.id}/boards`); }}
               style={mounted ? { animation:`fadeUp .5s ${0.05*i+0.22}s ease both` } : { opacity:0 }}
             >
@@ -463,7 +463,7 @@ export default function Dashboard() {
                   <div style={{ display:"flex", flexDirection:"column", gap:5, minWidth:0, flex:1 }}>
                     <span style={{
                       fontSize:"clamp(14px,2.5vw,17px)", fontWeight:700, color:"#E2E8F0",
-                      letterSpacing:"-0.3px", whiteSpace:"nowrap" as const, overflow:"hidden", textOverflow:"ellipsis",
+                      letterSpacing:"-0.3px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
                     }}>
                       {ws.name}
                     </span>
@@ -486,27 +486,48 @@ export default function Dashboard() {
               <div style={{
                 display:"flex", justifyContent:"space-between", alignItems:"center",
                 paddingTop:14, borderTop:"1px solid rgba(255,255,255,.05)", marginTop:"auto",
-                flexWrap:"wrap" as const, gap:8,
+                flexWrap:"wrap", gap:8,
               }}>
                 {editingWorkspaceId === ws.id ? (
                   <span style={{ fontSize:11, color:"#34D399", fontWeight:600, animation:"pulse 1.5s ease-in-out infinite" }}>
                     Enter to save · Esc to cancel
                   </span>
                 ) : (
-                  <span style={{ fontSize:12, color:"#6366F1", fontWeight:600 }}>Open workspace →</span>
+                  <span style={{ fontSize:12, color:"#6366F1", fontWeight:600 }}>Open Workspace →</span>
                 )}
 
                 {currentUserId === ws.owner_id && (
-                  <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                  <div className="hover-actions" style={{ display:"flex", gap:8 }}>
                     {editingWorkspaceId === ws.id ? (
                       <>
-                        <ActionBtn label="Save"   color="#34D399" bg="rgba(52,211,153,.12)"  hoverBg="rgba(52,211,153,.25)"  border="rgba(52,211,153,.3)"   alwaysVisible onClick={e => { e.stopPropagation(); handleUpdateWorkspace(ws.id); }} />
-                        <ActionBtn label="Cancel" color="#94A3B8" bg="rgba(148,163,184,.08)" hoverBg="rgba(148,163,184,.15)" border="rgba(148,163,184,.15)" alwaysVisible onClick={e => { e.stopPropagation(); setEditingWorkspaceId(null); }} />
+                        <DashboardActionBtn label="Save"   color="#34D399" bg="rgba(52,211,153,.12)"  hoverBg="rgba(52,211,153,.25)"  border="rgba(52,211,153,.3)"   onClick={e => { e.stopPropagation(); handleUpdateWorkspace(ws.id); }} />
+                        <DashboardActionBtn label="Cancel" color="#94A3B8" bg="rgba(148,163,184,.08)" hoverBg="rgba(148,163,184,.15)" border="rgba(148,163,184,.15)" onClick={e => { e.stopPropagation(); setEditingWorkspaceId(null); }} />
                       </>
                     ) : (
                       <>
-                        <ActionBtn label="Edit"   color="#818CF8" bg="rgba(99,102,241,.08)"  hoverBg="rgba(99,102,241,.18)"  border="rgba(99,102,241,.18)"  onClick={e => { e.stopPropagation(); setEditingWorkspaceId(ws.id); setEditNameValue(ws.name); }} />
-                        <ActionBtn label="Delete" color="#F87171" bg="rgba(239,68,68,.08)"   hoverBg="rgba(239,68,68,.18)"   border="rgba(239,68,68,.18)"   onClick={e => { e.stopPropagation(); deleteWorkspace(ws.id); }} />
+                        <DashboardActionBtn
+                          label="Edit"
+                          color="#818CF8"
+                          bg="rgba(99,102,241,.08)"
+                          hoverBg="rgba(99,102,241,.2)"
+                          border="rgba(99,102,241,.2)"
+                          onClick={e => {
+                            e.stopPropagation();
+                            setEditingWorkspaceId(ws.id);
+                            setEditNameValue(ws.name);
+                          }}
+                        />
+                        <DashboardActionBtn
+                          label="Delete"
+                          color="#F87171"
+                          bg="rgba(239,68,68,.08)"
+                          hoverBg="rgba(239,68,68,.2)"
+                          border="rgba(239,68,68,.2)"
+                          onClick={e => {
+                            e.stopPropagation();
+                            deleteWorkspace(ws.id);
+                          }}
+                        />
                       </>
                     )}
                   </div>
@@ -529,21 +550,71 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* ── Custom Dark Theme Logout Confirmation Modal ── */}
+      {showLogoutConfirm && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          background: "rgba(5, 10, 20, 0.75)", backdropFilter: "blur(8px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          animation: "fadeIn 0.2s ease both"
+        }}>
+          <div style={{
+            background: "linear-gradient(160deg, #0D1830 0%, #0A1220 100%)",
+            border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: 20,
+            padding: 24, maxWidth: 360, width: "90%", textAlign: "center",
+            boxShadow: "0 24px 48px rgba(0, 0, 0, 0.6)",
+            animation: "scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both"
+          }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>🚪</div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: "#F1F5F9", letterSpacing: "-0.4px" }}>
+              Sign Out?
+            </h3>
+            <p style={{ fontSize: 13, color: "#64748B", marginTop: 6, lineHeight: 1.5 }}>
+              Are you sure you want to log out of your workspace session? You will need to sign back in.
+            </p>
+            
+            <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="btn-ghost"
+                style={{ flex: 1 }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.removeItem("token");
+                  localStorage.removeItem("user");
+                  navigate("/login");
+                }}
+                style={{
+                  flex: 1, background: "linear-gradient(135deg, #EF4444, #DC2626)", border: "none",
+                  color: "#FFF", borderRadius: 12, padding: "10px 16px", fontSize: 13,
+                  fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+                  boxShadow: "0 4px 12px rgba(239, 68, 68, 0.25)"
+                }}
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── Action Button ────────────────────────────────────────────────────────────
-function ActionBtn({
-  label, color, bg, hoverBg, border, onClick, alwaysVisible = false,
+// ─── Small action button component ───────────────────────────────────────────
+function DashboardActionBtn({
+  label, color, bg, hoverBg, border, onClick,
 }: {
   label: string; color: string; bg: string; hoverBg: string; border: string;
-  onClick: (e: React.MouseEvent) => void; alwaysVisible?: boolean;
+  onClick: (e: React.MouseEvent) => void;
 }) {
   const [hovered, setHovered] = useState(false);
   return (
     <button
-      className={alwaysVisible ? "" : "action-btn"}
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}

@@ -200,6 +200,7 @@ function Boards() {
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Inject styles once
   useEffect(() => {
@@ -317,8 +318,12 @@ function Boards() {
               Members
             </button>
             <button
-              className="btn-danger"
-              onClick={() => { localStorage.removeItem("token"); navigate("/login"); }}
+              onClick={() => setShowLogoutConfirm(true)}
+              style={{
+                background: "rgba(239,68,68,.10)", border: "1px solid rgba(239,68,68,.25)", color: "#F87171",
+                borderRadius: 12, padding: "8px 16px", fontSize: 13, fontWeight: 600,
+                cursor: "pointer", fontFamily: "inherit", minHeight: 40, whiteSpace: "nowrap"
+              }}
             >
               Sign out
             </button>
@@ -471,6 +476,59 @@ function Boards() {
           </div>
         )}
       </div>
+
+      {/* ── Custom Dark Theme Logout Confirmation Modal ── */}
+      {showLogoutConfirm && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          background: "rgba(5, 10, 20, 0.75)", backdropFilter: "blur(8px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          animation: "fadeIn 0.2s ease both"
+        }}>
+          <div style={{
+            background: "linear-gradient(160deg, #0D1830 0%, #0A1220 100%)",
+            border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: 20,
+            padding: 24, maxWidth: 360, width: "90%", textAlign: "center",
+            boxShadow: "0 24px 48px rgba(0, 0, 0, 0.6)",
+            animation: "scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both"
+          }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>🚪</div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: "#F1F5F9", letterSpacing: "-0.4px" }}>
+              Sign Out?
+            </h3>
+            <p style={{ fontSize: 13, color: "#64748B", marginTop: 6, lineHeight: 1.5 }}>
+              Are you sure you want to log out of your workspace session? You will need to sign back in.
+            </p>
+            
+            <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                style={{
+                  flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+                  color: "#94A3B8", borderRadius: 12, padding: "10px 16px", fontSize: 13,
+                  fontWeight: 600, cursor: "pointer", fontFamily: "inherit"
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.removeItem("token");
+                  navigate("/login");
+                }}
+                style={{
+                  flex: 1, background: "linear-gradient(135deg, #EF4444, #DC2626)", border: "none",
+                  color: "#FFF", borderRadius: 12, padding: "10px 16px", fontSize: 13,
+                  fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+                  boxShadow: "0 4px 12px rgba(239, 68, 68, 0.25)"
+                }}
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
