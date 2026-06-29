@@ -230,6 +230,7 @@ function Boards() {
   const T = theme === "dark" ? DARK : LIGHT;
 
   const [boards, setBoards] = useState<Board[]>([]);
+  const [workspaceName, setWorkspaceName] = useState(""); // Dynamic workspace text placeholder
   const [boardName, setBoardName] = useState("");
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
@@ -248,6 +249,18 @@ function Boards() {
     document.head.appendChild(tag);
     return () => { document.head.removeChild(tag); };
   }, []);
+
+  // New API execution targeting specific workspace details
+  const fetchWorkspaceDetails = async () => {
+    try {
+      const res = await api.get(`/workspaces/${workspaceId}`);
+      if (res.data && res.data.name) {
+        setWorkspaceName(res.data.name);
+      }
+    } catch (e) {
+      console.error("Could not load targeted workspace configurations:", e);
+    }
+  };
 
   const fetchBoards = async (silent = false) => {
     try {
@@ -293,7 +306,11 @@ function Boards() {
   };
 
   useEffect(() => {
-    if (workspaceId) { fetchCurrentUser(); fetchBoards(); }
+    if (workspaceId) { 
+      fetchCurrentUser(); 
+      fetchWorkspaceDetails(); // Execute workspace metadata fetch parallelly 
+      fetchBoards(); 
+    }
   }, [workspaceId]);
 
   if (loading) return (
@@ -338,8 +355,9 @@ function Boards() {
               <button className="breadcrumb" onClick={() => navigate("/dashboard")} style={{ color:T.accentText }}>
                 ← Workspaces
               </button>
+              {/* Dynamic Heading Container */}
               <div style={{ fontSize:16, fontWeight:800, color:T.text, letterSpacing:"-0.4px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", transition:"color .3s" }}>
-                Workspace Boards
+                {workspaceName || "Workspace Boards"}
               </div>
             </div>
           </div>
@@ -408,12 +426,9 @@ function Boards() {
                   </span>
                   <div style={{ display:"flex", alignItems:"center", gap:5 }}>
                     <span style={{ fontSize:10, color:T.textMuted, fontWeight:500, transition:"color .3s" }}>Created by</span>
-                    
-                    {/* Fixed inline border radius here */}
                     <span style={{ background:T.tagBg, border:`1px solid ${T.tagBorder}`, color:T.tagText, borderRadius:8, fontSize:11, fontWeight:600, padding:"2px 8px", display:"inline-flex", alignItems:"center", transition:"background .4s, border-color .4s, color .3s" }}>
                       {board.owner?.name || "Board Creator"}
                     </span>
-
                   </div>
                 </div>
                 <span style={{ background:T.idBg, border:`1px solid ${T.idBorder}`, color:T.idText, borderRadius:8, fontSize:10, fontWeight:600, fontFamily:"monospace", padding:"3px 8px", flexShrink:0, transition:"background .4s, border-color .4s, color .3s" }}>
