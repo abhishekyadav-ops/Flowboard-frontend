@@ -21,12 +21,75 @@ interface UserSearchResult {
   email: string;
 }
 
+// ─── Theme tokens ─────────────────────────────────────────────────────────────
+const DARK = {
+  pageBg:       "#050A14",
+  navBg:        "rgba(5,10,20,.85)",
+  navBorder:    "rgba(255,255,255,.06)",
+  cardBg:       "linear-gradient(160deg,#0D1830 0%,#0A1220 100%)",
+  cardBorder:   "rgba(99,102,241,.12)",
+  rowBg:        "linear-gradient(145deg,#131f35,#0e1826)",
+  rowBorder:    "rgba(255,255,255,.07)",
+  inputBg:      "rgba(5,10,20,.7)",
+  inputBorder:  "rgba(255,255,255,.08)",
+  text:         "#E2E8F0",
+  textMuted:    "#475569",
+  textSub:      "#64748B",
+  textHeading:  "#F1F5F9",
+  tagBg:        "rgba(99,102,241,.12)",
+  tagBorder:    "rgba(99,102,241,.25)",
+  tagText:      "#A5B4FC",
+  emptyBorder:  "rgba(99,102,241,.2)",
+  emptyBg:      "rgba(99,102,241,.03)",
+  emptyText:    "#475569",
+  emptySub:     "#334155",
+  toggleBg:     "rgba(255,255,255,.06)",
+  toggleBorder: "rgba(255,255,255,.10)",
+  toggleText:   "#94A3B8",
+  aurora: [
+    "rgba(99,102,241,.14)",
+    "rgba(34,211,238,.10)",
+    "rgba(139,92,246,.08)",
+  ],
+};
+
+const LIGHT = {
+  pageBg:       "#F0F2F8",
+  navBg:        "rgba(226,231,243,.85)",
+  navBorder:    "rgba(99,102,241,.16)",
+  cardBg:       "linear-gradient(160deg, #E2E7F3 0%, #D4DBEC 100%)",
+  cardBorder:   "rgba(99, 102, 241, 0.2)",
+  rowBg:        "linear-gradient(145deg, #E8ECF7, #DCE2F2)",
+  rowBorder:    "rgba(99, 102, 241, 0.15)",
+  inputBg:      "rgba(255,255,255,.85)",
+  inputBorder:  "rgba(99,102,241,.25)",
+  text:         "#0F172A",
+  textMuted:    "#475569",
+  textSub:      "#475569",
+  textHeading:  "#0F172A",
+  tagBg:        "rgba(99,102,241,.12)",
+  tagBorder:    "rgba(99,102,241,.25)",
+  tagText:      "#4F46E5",
+  emptyBorder:  "rgba(99,102,241,.3)",
+  emptyBg:      "rgba(99,102,241,.06)",
+  emptyText:    "#334155",
+  emptySub:     "#475569",
+  toggleBg:     "rgba(99,102,241,.12)",
+  toggleBorder: "rgba(99,102,241,.22)",
+  toggleText:   "#4F46E5",
+  aurora: [
+    "rgba(99,102,241,.12)",
+    "rgba(34,211,238,.09)",
+    "rgba(139,92,246,.09)",
+  ],
+};
+
 const MEMBERS_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { -webkit-text-size-adjust: 100%; }
-  body { font-family: 'Inter', sans-serif; overflow-x: hidden; background: #050A14; }
+  body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
 
   @keyframes aurora {
     0%   { transform: translate(0%,0%)   scale(1);    opacity: .45; }
@@ -44,37 +107,36 @@ const MEMBERS_STYLES = `
 
   .members-navbar {
     position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-    background: rgba(5,10,20,.88);
     backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255,255,255,.06);
     height: 60px;
     display: flex; align-items: center;
     padding: 0 max(16px, env(safe-area-inset-left));
     animation: fadeIn .4s ease both;
     flex-shrink: 0;
+    border-bottom-style: solid; border-bottom-width: 1px;
+    transition: background .4s, border-color .4s;
   }
   @media (min-width: 640px) { .members-navbar { height: 64px; padding: 0 32px; } }
 
   .content-card {
-    background: linear-gradient(160deg,#0D1830 0%,#0A1220 100%);
-    border: 1px solid rgba(99,102,241,.12);
+    border-style: solid; border-width: 1px;
     border-radius: 20px;
     padding: 24px;
     width: 100%;
     box-shadow: 0 4px 24px rgba(0,0,0,.2);
+    transition: background .4s, border-color .4s;
   }
 
   .member-item-row {
-    background: linear-gradient(145deg,#131f35,#0e1826);
-    border: 1px solid rgba(255,255,255,.07);
+    border-style: solid; border-width: 1px;
     border-radius: 14px;
     padding: 16px;
     display: flex; align-items: center; justify-content: space-between; gap: 16px;
-    transition: border-color .2s, box-shadow .2s, transform .15s;
+    transition: border-color .2s, box-shadow .2s, transform .15s, background .4s;
   }
   @media (hover:hover) {
     .member-item-row:hover {
-      border-color: rgba(99,102,241,.25);
+      border-color: rgba(99,102,241,.4);
       box-shadow: 0 4px 20px rgba(0,0,0,.3);
     }
   }
@@ -85,8 +147,7 @@ const MEMBERS_STYLES = `
     box-shadow: 0 0 0 3px rgba(99,102,241,.12);
   }
 
-  .tag { border-radius: 7px; font-size: 11px; font-weight: 600; padding: 2px 7px; display:inline-flex; align-items:center; }
-  .tag-indigo { background:rgba(99,102,241,.12); border:1px solid rgba(99,102,241,.25); color:#A5B4FC; }
+  .tag { font-size: 11px; font-weight: 600; padding: 2px 8px; display:inline-flex; align-items:center; transition: background .4s, border-color .4s, color .3s; }
   
   .logo-ring {
     border-radius:12px;
@@ -114,10 +175,21 @@ export default function Members() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const navigate = useNavigate();
 
+  const [theme, setTheme] = useState<"dark" | "light">(() =>
+    (localStorage.getItem("fb-theme") as "dark" | "light") || "dark"
+  );
+  const T = theme === "dark" ? DARK : LIGHT;
+
   const [members, setMembers] = useState<Member[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserSearchResult | null>(null);
+
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    localStorage.setItem("fb-theme", next);
+  };
 
   useEffect(() => {
     const tag = document.createElement("style");
@@ -136,7 +208,6 @@ export default function Members() {
     }
   };
 
-  // Fixed Debounced Search Effect logic loop
   useEffect(() => {
     if (!workspaceId) return;
 
@@ -195,28 +266,28 @@ export default function Members() {
   }, [workspaceId]);
 
   return (
-    <div style={{ minHeight: "100vh", background: "#050A14", color: "#E2E8F0", fontFamily: "Inter,sans-serif", display: "flex", flexDirection: "column", overflowX: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: T.pageBg, color: T.text, fontFamily: "Inter,sans-serif", display: "flex", flexDirection: "column", overflowX: "hidden", transition: "background .4s, color .3s" }}>
       
       {/* Aurora blobs */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }}>
         {[
-          { top: "-15%", left: "15%",  w: 500, h: 500, color: "rgba(99,102,241,.14)", dur: "20s", delay: "0s",  rev: false },
-          { top: "55%",  right: "8%",  w: 420, h: 420, color: "rgba(34,211,238,.10)", dur: "25s", delay: "2s",  rev: true  },
-          { top: "30%",  left: "45%",  w: 350, h: 350, color: "rgba(139,92,246,.08)", dur: "30s", delay: "5s",  rev: false },
+          { top: "-15%", left: "15%",  w: 500, h: 500, delay: "0s",  rev: false },
+          { top: "55%",  right: "8%",  w: 420, h: 420, delay: "2s",  rev: true  },
+          { top: "30%",  left: "45%",  w: 350, h: 350, delay: "5s",  rev: false },
         ].map((b, i) => (
           <div key={i} className="aurora-blob" style={{
             position: "absolute",
             top: b.top, left: (b as any).left, right: (b as any).right,
             width: b.w, height: b.h, borderRadius: "50%",
-            background: `radial-gradient(ellipse,${b.color} 0%,transparent 70%)`,
-            animation: `aurora ${b.dur} ease-in-out infinite ${b.delay}${b.rev ? " reverse" : ""}`,
-            filter: "blur(50px)",
+            background: `radial-gradient(ellipse,${T.aurora[i]} 0%,transparent 70%)`,
+            animation: `aurora ${20 + i * 5}s ease-in-out infinite ${b.delay}${b.rev ? " reverse" : ""}`,
+            filter: "blur(50px)", transition: "background 0.6s",
           }} />
         ))}
       </div>
 
       {/* Navbar */}
-      <nav className="members-navbar">
+      <nav className="members-navbar" style={{ background: T.navBg, borderBottomColor: T.navBorder }}>
         <div style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
             <div className="logo-ring" style={{ width: 38, height: 38, fontSize: 17 }}>F</div>
@@ -227,13 +298,16 @@ export default function Members() {
               >
                 ← Workspace
               </button>
-              <div style={{ fontSize: 15, fontWeight: 800, color: "#F1F5F9", letterSpacing: "-0.4px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: T.textHeading, letterSpacing: "-0.4px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", transition: "color .3s" }}>
                 Manage Workspace Team
               </div>
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-            <span style={{ fontSize: 12, color: "#475569", fontWeight: 500, display: "flex", alignItems: "center", gap: 6 }}>
+            <button className="theme-toggle" onClick={toggleTheme} style={{ background: T.toggleBg, borderColor: T.toggleBorder, color: T.toggleText, borderStyle:"solid", borderWidth:1, borderRadius:12, padding:"6px 12px", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", minHeight:36, whiteSpace:"nowrap", transition:"background .25s, color .25s, border-color .25s" }}>
+              {theme === "dark" ? "☀️ Light" : "🌙 Dark"}
+            </button>
+            <span style={{ fontSize: 12, color: T.textMuted, fontWeight: 500, display: "flex", alignItems: "center", gap: 6, transition: "color .3s" }}>
               <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#6366F1", display: "inline-block", boxShadow: "0 0 8px rgba(99,102,241,.6)" }} />
               {members.length} {members.length === 1 ? 'member' : 'members'}
             </span>
@@ -254,13 +328,13 @@ export default function Members() {
       }}>
         <div style={{ width: "100%", maxWidth: "640px", display: "flex", flexDirection: "column", gap: 24 }}>
           
-          <h1 style={{ fontSize: 32, fontWeight: 800, color: "#F1F5F9", letterSpacing: "-0.8px", animation: "fadeUp .4s ease both" }}>
+          <h1 style={{ fontSize: 32, fontWeight: 800, color: T.textHeading, letterSpacing: "-0.8px", animation: "fadeUp .4s ease both", transition: "color .3s" }}>
             Team Members
           </h1>
 
           {/* Add Member Box */}
-          <div className="content-card" style={{ animation: "fadeUp .4s .06s ease both", position: "relative", zIndex: 20 }}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: "#F1F5F9", marginBottom: 16, letterSpacing: "-0.2px" }}>
+          <div className="content-card" style={{ background: T.cardBg, borderColor: T.cardBorder, animation: "fadeUp .4s .06s ease both", position: "relative", zIndex: 20 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: T.textHeading, marginBottom: 16, letterSpacing: "-0.2px", transition: "color .3s" }}>
               Add Workspace Member
             </h2>
             <div style={{ display: "flex", gap: 12, position: "relative", alignItems: "stretch" }}>
@@ -274,9 +348,9 @@ export default function Members() {
                   className="input-glow"
                   style={{
                     width: "100%", height: "46px",
-                    background: "rgba(5,10,20,.7)", border: "1px solid rgba(255,255,255,.08)",
-                    borderRadius: 12, padding: "0 14px", color: "#E2E8F0", fontSize: 13,
-                    fontFamily: "inherit", transition: "border-color .2s,box-shadow .2s",
+                    background: T.inputBg, border: `1px solid ${T.inputBorder}`,
+                    borderRadius: 12, padding: "0 14px", color: T.text, fontSize: 13,
+                    fontFamily: "inherit", transition: "border-color .2s,box-shadow .2s, background .4s, color .3s",
                   }}
                 />
                 {selectedUser && (
@@ -284,6 +358,7 @@ export default function Members() {
                     onClick={() => {
                       setSelectedUser(null);
                       setSearchQuery("");
+                      setSearchResults([]);
                     }}
                     style={{
                       position: "absolute", right: 12, top: 10,
@@ -300,9 +375,9 @@ export default function Members() {
                 {searchResults.length > 0 && !selectedUser && (
                   <div className="dropdown-scroll" style={{
                     position: "absolute", left: 0, right: 0, marginTop: 6,
-                    background: "linear-gradient(145deg,#0D1830,#0A1220)",
+                    background: theme === "dark" ? "linear-gradient(145deg,#0D1830,#0A1220)" : "linear-gradient(145deg,#E2E7F3,#D4DBEC)",
                     border: "1px solid rgba(99,102,241,.35)", borderRadius: 14,
-                    boxShadow: "0 20px 40px rgba(0,0,0,.7)", zIndex: 999,
+                    boxShadow: "0 20px 40px rgba(0,0,0,.3)", zIndex: 999,
                     maxHeight: "200px", overflowY: "auto"
                   }}>
                     {searchResults.map((user) => (
@@ -317,11 +392,11 @@ export default function Members() {
                           borderBottom: "1px solid rgba(255,255,255,.04)",
                           transition: "background .15s"
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(255,255,255,.04)"}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(99,102,241,.08)"}
                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
                       >
-                        <p style={{ fontSize: 13, fontWeight: 600, color: "#F1F5F9", textAlign: "left" }}>{user.name}</p>
-                        <p style={{ fontSize: 11, color: "#64748B", marginTop: 2, textAlign: "left" }}>{user.email}</p>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: T.textHeading, textAlign: "left" }}>{user.name}</p>
+                        <p style={{ fontSize: 11, color: T.textSub, marginTop: 2, textAlign: "left" }}>{user.email}</p>
                       </div>
                     ))}
                   </div>
@@ -347,17 +422,17 @@ export default function Members() {
               <div
                 key={member.id}
                 className="member-item-row"
-                style={{ animation: `fadeUp .4s ${0.12 + idx * 0.04}s ease both` }}
+                style={{ background: T.rowBg, borderColor: T.rowBorder, animation: `fadeUp .4s ${0.12 + idx * 0.04}s ease both` }}
               >
                 <div style={{ textAlign: "left" }}>
-                  <h3 style={{ fontWeight: 700, fontSize: 14, color: "#F1F5F9" }}>
+                  <h3 style={{ fontWeight: 700, fontSize: 14, color: T.textHeading, transition: "color .3s" }}>
                     {member.user?.name || "Unknown Profile"}
                   </h3>
-                  <p style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>
+                  <p style={{ color: T.textSub, fontSize: 12, marginTop: 2, transition: "color .3s" }}>
                     {member.user?.email || "No Email Registered"}
                   </p>
                   <div style={{ marginTop: 8 }}>
-                    <span className="tag tag-indigo">
+                    <span className="tag" style={{ background: T.tagBg, border: `1px solid ${T.tagBorder}`, color: T.tagText, borderRadius: "8px" }}>
                       {member.role}
                     </span>
                   </div>
@@ -379,12 +454,12 @@ export default function Members() {
 
             {members.length === 0 && (
               <div style={{
-                textAlign: "center", border: "1px dashed rgba(99,102,241,.2)", borderRadius: 24,
-                background: "rgba(99,102,241,.03)", padding: "48px 32px", animation: "fadeUp .5s ease both"
+                textAlign: "center", border: `1px dashed ${T.emptyBorder}`, borderRadius: 24,
+                background: T.emptyBg, padding: "48px 32px", animation: "fadeUp .5s ease both", transition: "background .4s, border-color .4s"
               }}>
                 <div style={{ fontSize: 32, marginBottom: 12, opacity: .4 }}>⬡</div>
-                <p style={{ fontSize: 15, fontWeight: 600, color: "#475569" }}>No members found</p>
-                <p style={{ fontSize: 12, color: "#334155", marginTop: 4 }}>Add contributors above to access the workspace.</p>
+                <p style={{ fontSize: 15, fontWeight: 600, color: T.emptyText, transition: "color .3s" }}>No members found</p>
+                <p style={{ fontSize: 12, color: T.emptySub, marginTop: 4, transition: "color .3s" }}>Add contributors above to access the workspace.</p>
               </div>
             )}
           </div>

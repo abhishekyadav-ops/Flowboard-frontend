@@ -2,12 +2,17 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 
-// ─── Global styles matching BoardPage & Members ───────────────────────────────
+// ─── Global styles matching BoardPage & Members (with Light Theme Overrides) ───
 const LOGIN_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Inter', sans-serif; overflow-x: hidden; background: #050A14; }
+  body { font-family: 'Inter', sans-serif; overflow-x: hidden; background: #050A14; transition: background .4s; }
+
+  /* ── Fix: Target root/body selectors correctly for global background shift ── */
+  body.light, [data-theme="light"] body, html[data-theme="light"] body {
+    background: #F8FAFC !important;
+  }
 
   @keyframes aurora {
     0%   { transform: translate(0%,0%)   scale(1);    opacity: .45; }
@@ -30,13 +35,30 @@ const LOGIN_STYLES = `
     max-width: 420px;
     box-shadow: 0 24px 64px rgba(0,0,0,.5);
     animation: scaleIn .35s cubic-bezier(.22,.68,0,1.2) both;
+    transition: background .4s, border-color .4s, box-shadow .4s;
+  }
+  .light .auth-panel, [data-theme="light"] .auth-panel, body.light .auth-panel {
+    background: #FFFFFF !important;
+    border: 1px solid rgba(99,102,241,.15) !important;
+    box-shadow: 0 20px 40px rgba(99,102,241,.05) !important;
   }
 
-  /* ── Input Focus ── */
+  /* ── Input Glow & Custom Focus ── */
+  .input-glow {
+    width: 100%; height: 44px;
+    background: rgba(5,10,20,.7); border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px; padding: 0 14px; color: #E2E8F0; fontSize: 13px;
+    font-family: inherit; transition: border-color .2s, box-shadow .2s, background .4s, color .3s;
+  }
+  .light .input-glow, [data-theme="light"] .input-glow, body.light .input-glow {
+    background: #F1F5F9 !important;
+    border: 1px solid rgba(0, 0, 0, .08) !important;
+    color: #0F172A !important;
+  }
   .input-glow:focus {
     outline: none;
     border-color: rgba(99,102,241,.7) !important;
-    box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+    box-shadow: 0 0 0 3px rgba(99,102,241,.12) !important;
   }
 
   /* ── Brand Logo Badge ── */
@@ -47,6 +69,12 @@ const LOGIN_STYLES = `
     font-weight: 800; color: #fff;
     box-shadow: 0 4px 16px rgba(99,102,241,.4);
   }
+
+  /* ── Light Mode Form Dynamic Typographies ── */
+  .light .main-heading, [data-theme="light"] .main-heading, body.light .main-heading { color: #0F172A !important; }
+  .light .sub-heading, [data-theme="light"] .sub-heading, body.light .sub-heading { color: #64748B !important; }
+  .light .form-divider, [data-theme="light"] .form-divider, body.light .form-divider { background: rgba(0,0,0,.06) !important; }
+  .light .footer-notice, [data-theme="light"] .footer-notice, body.light .footer-notice { color: #94A3B8 !important; }
 
   @media (prefers-reduced-motion:reduce) {
     .auth-panel { animation: none; }
@@ -60,8 +88,26 @@ function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  
+  // Track theme changes directly in local state
+  const [isLightMode, setIsLightMode] = useState(() => {
+    return localStorage.getItem("theme") === "light";
+  });
 
-  // Inject Custom Styles
+  // Sync state changes directly to the page document structure 
+  useEffect(() => {
+    if (isLightMode) {
+      document.body.classList.add("light");
+      document.documentElement.setAttribute("data-theme", "light");
+      localStorage.setItem("theme", "light");
+    } else {
+      document.body.classList.remove("light");
+      document.documentElement.removeAttribute("data-theme");
+      localStorage.setItem("theme", "dark");
+    }
+  }, [isLightMode]);
+
+  // Inject Dynamic Custom Stylesheet
   useEffect(() => {
     const tag = document.createElement("style");
     tag.innerHTML = LOGIN_STYLES;
@@ -71,12 +117,10 @@ function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!email.trim() || !password.trim()) {
       alert("Please fill in all fields.");
       return;
     }
-
     setLoading(true);
 
     try {
@@ -85,9 +129,7 @@ function Login() {
       formData.append("password", password);
 
       const response = await api.post("/users/login", formData, {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
       });
 
       localStorage.setItem("token", response.data.access_token);
@@ -111,8 +153,33 @@ function Login() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#050A14", color: "#E2E8F0", fontFamily: "Inter,sans-serif", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, overflow: "hidden", position: "relative" }}>
+    <div style={{ minHeight: "100vh", position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, overflow: "hidden" }}>
       
+      {/* ── NEW: Visible Theme Switching Control Button ── */}
+      <button
+        type="button"
+        onClick={() => setIsLightMode(!isLightMode)}
+        style={{
+          position: "absolute", top: 24, right: 24, zIndex: 10,
+          background: isLightMode ? "#FFFFFF" : "#0D1830",
+          color: isLightMode ? "#0F172A" : "#E2E8F0",
+          border: `1px solid ${isLightMode ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.1)"}`,
+          borderRadius: 12, padding: "8px 16px", fontSize: 12, fontWeight: 600,
+          cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.1)", transition: "all .3s"
+        }}
+      >
+        {isLightMode ? (
+          <>
+            <span>🌙</span> Dark Mode
+          </>
+        ) : (
+          <>
+            <span>☀️</span> Light Mode
+          </>
+        )}
+      </button>
+
       {/* Aurora Ambient blobs */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }}>
         {[
@@ -134,10 +201,10 @@ function Login() {
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, marginBottom: 32, position: "relative", zIndex: 1, textAlign: "center", animation: "fadeIn .5s ease both" }}>
         <div className="logo-ring" style={{ width: 52, height: 52, fontSize: 22 }}>F</div>
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: "#F1F5F9", letterSpacing: "-0.6px" }}>
+          <h1 className="main-heading" style={{ fontSize: 28, fontWeight: 800, color: "#F1F5F9", letterSpacing: "-0.6px", transition: "color .3s" }}>
             Welcome back to FlowBoard
           </h1>
-          <p style={{ color: "#64748B", fontSize: 13, marginTop: 4, fontWeight: 500 }}>
+          <p className="sub-heading" style={{ color: "#64748B", fontSize: 13, marginTop: 4, fontWeight: 500, transition: "color .3s" }}>
             Enter your credentials to access your workspaces
           </p>
         </div>
@@ -159,12 +226,6 @@ function Login() {
               disabled={loading}
               onChange={(e) => setEmail(e.target.value)}
               className="input-glow"
-              style={{
-                width: "100%", height: "44px",
-                background: "rgba(5,10,20,.7)", border: "1px solid rgba(255,255,255,.08)",
-                borderRadius: 12, padding: "0 14px", color: "#E2E8F0", fontSize: 13,
-                fontFamily: "inherit", transition: "border-color .2s,box-shadow .2s"
-              }}
               required
             />
           </div>
@@ -190,12 +251,6 @@ function Login() {
               disabled={loading}
               onChange={(e) => setPassword(e.target.value)}
               className="input-glow"
-              style={{
-                width: "100%", height: "44px",
-                background: "rgba(5,10,20,.7)", border: "1px solid rgba(255,255,255,.08)",
-                borderRadius: 12, padding: "0 14px", color: "#E2E8F0", fontSize: 13,
-                fontFamily: "inherit", transition: "border-color .2s,box-shadow .2s"
-              }}
               required
             />
           </div>
@@ -225,9 +280,9 @@ function Login() {
 
           {/* Separation Boundary Layout */}
           <div style={{ display: "flex", alignItems: "center", margin: "4px 0", fontSize: 11, color: "#334155", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-            <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,.05)" }}></div>
+            <div className="form-divider" style={{ flex: 1, height: "1px", background: "rgba(255,255,255,.05)", transition: "background .4s" }}></div>
             <span style={{ padding: "0 12px" }}>or</span>
-            <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,.05)" }}></div>
+            <div className="form-divider" style={{ flex: 1, height: "1px", background: "rgba(255,255,255,.05)", transition: "background .4s" }}></div>
           </div>
 
           {/* Google SSO Button */}
@@ -237,11 +292,12 @@ function Login() {
             onClick={handleGoogleLogin}
             style={{
               width: "100%", height: "44px",
-              background: "#FFFFFF", border: "1px solid rgba(255,255,255,.1)",
+              background: "#FFFFFF", border: "1px solid rgba(0,0,0,.08)",
               color: "#0F172A", borderRadius: 12, fontSize: 13, fontWeight: 700,
               cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center",
-              justifyContent: "center", gap: 10, transition: "background .15s",
-              opacity: loading ? 0.6 : 1
+              justifyContent: "center", gap: 10, transition: "background .15s, color .15s",
+              opacity: loading ? 0.6 : 1,
+              boxShadow: "0 1px 2px rgba(0,0,0,.05)"
             }}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F1F5F9"}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#FFFFFF"}
@@ -261,7 +317,7 @@ function Login() {
               type="button"
               onClick={() => navigate("/register")}
               style={{ background: "none", border: "none", fontSize: 12, fontWeight: 600, color: "#64748B", cursor: "pointer", fontFamily: "inherit", textDecoration: "underline", textUnderlineOffset: "4px" }}
-              onMouseEnter={(e) => e.currentTarget.style.color = "#F1F5F9"}
+              onMouseEnter={(e) => e.currentTarget.style.color = "#6366F1"}
               onMouseLeave={(e) => e.currentTarget.style.color = "#64748B"}
             >
               Need an account? Sign Up
@@ -270,7 +326,7 @@ function Login() {
         </form>
       </div>
 
-      <p style={{ fontSize: 11, color: "#334155", marginTop: 32, position: "relative", zIndex: 1, fontWeight: 500 }}>
+      <p className="footer-notice" style={{ fontSize: 11, color: "#334155", marginTop: 32, position: "relative", zIndex: 1, fontWeight: 500, transition: "color .3s" }}>
         Protected connection. FlowBoard uses encrypted access handling tokens.
       </p>
     </div>
