@@ -90,6 +90,7 @@ const LIGHT = {
     "rgba(139,92,246,.09)",
   ],
 };
+
 const BOARD_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
@@ -97,7 +98,6 @@ const BOARD_STYLES = `
   html { -webkit-text-size-adjust: 100%; }
   body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
 
-  /* --- ANIMATIONS --- */
   @keyframes aurora {
     0%   { transform: translate(0%, 0%)   scale(1);    opacity: .45; }
     33%  { transform: translate(4%, -6%)  scale(1.06); opacity: .35; }
@@ -109,7 +109,6 @@ const BOARD_STYLES = `
   @keyframes scaleIn  { from { opacity: 0; transform: scale(.95) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
   @keyframes spin     { to { transform: rotate(360deg); } }
 
-  /* --- SCROLLBARS --- */
   .board-scroll::-webkit-scrollbar { height: 6px; }
   .board-scroll::-webkit-scrollbar-track { background: transparent; }
   .board-scroll::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, .25); border-radius: 99px; }
@@ -118,7 +117,6 @@ const BOARD_STYLES = `
   .list-scroll::-webkit-scrollbar-track { background: transparent; }
   .list-scroll::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, .25); border-radius: 99px; }
 
-  /* --- COMPONENTS --- */
   .board-navbar {
     position: fixed; top: 0; left: 0; right: 0; z-index: 100;
     backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
@@ -211,22 +209,19 @@ const BOARD_STYLES = `
     }
   }
 
-  /* --- TAG MANAGEMENT --- */
-  .tag { 
-    border-radius: 7px; 
-    font-size: 11px; 
-    font-weight: 600; 
-    padding: 2px 7px; 
-    display: inline-flex; 
-    align-items: center; 
-    transition: background .4s, border-color .4s, color .3s; 
+  .tag {
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    display: inline-flex;
+    align-items: center;
+    transition: background .4s, border-color .4s, color .3s;
   }
 
-  /* Dark Theme Styling (Default) */
   .tag-indigo { background: rgba(99, 102, 241, .12); border: 1px solid rgba(99, 102, 241, .25); color: #A5B4FC; }
   .tag-amber  { background: rgba(245, 158, 11, .10); border: 1px solid rgba(245, 158, 11, .25); color: #7f6612; }
 
-  /* Light Theme Overrides (.light class or data-theme attribute fallback) */
   .light .tag-indigo, [data-theme="light"] .tag-indigo {
     background: rgba(99, 102, 241, 0.1);
     border-color: rgba(99, 102, 241, 0.3);
@@ -238,7 +233,6 @@ const BOARD_STYLES = `
     color: #b45309;
   }
 
-  /* --- MISC UI ELEMENTS --- */
   .logo-ring {
     border-radius: 12px;
     background: linear-gradient(135deg, #6366F1, #22D3EE);
@@ -274,7 +268,6 @@ const BOARD_STYLES = `
     transition: background .4s, border-color .4s;
   }
 
-  /* --- PERFORMANCE ACCESSIBILITY --- */
   @media (prefers-reduced-motion: reduce) {
     .task-card, .add-card-btn { transition: none; }
     .aurora-blob { animation: none !important; }
@@ -297,6 +290,12 @@ export default function BoardPage() {
   const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMember[]>([]);
   const [assignees, setAssignees] = useState<Record<number, CardAssignee[]>>({});
   const [loading, setLoading] = useState(true);
+
+  // Access control state
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [boardCreatorId, setBoardCreatorId] = useState<number | null>(null);
+  const [workspaceOwnerId, setWorkspaceOwnerId] = useState<number | null>(null);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   const [editingCard, setEditingCard] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -352,6 +351,48 @@ export default function BoardPage() {
     } catch (e) { console.error(e); }
   };
 
+  // Step 1: Get the logged-in user's ID
+  const fetchCurrentUser = async (): Promise<number | null> => {
+    try {
+      const res = await api.get("/users/me");
+      setCurrentUserId(res.data.id);
+      return res.data.id;
+    } catch (e) { console.error("Could not fetch user", e); return null; }
+  };
+
+  // Step 2: Fetch board + workspace metadata and decide access
+  const fetchBoardAndAccessCheck = async (userId: number) => {
+    try {
+      // Who created this board?
+      const boardRes = await api.get(`/boards/${boardId}`);
+      const creatorId: number = boardRes.data.created_by;
+      setBoardCreatorId(creatorId);
+
+      // Who owns the workspace?
+      const wsId = workspaceId || boardRes.data.workspace_id;
+      if (wsId) {
+        const wsRes = await api.get(`/workspaces/${wsId}`);
+        const ownerId: number = wsRes.data.owner_id;
+        setWorkspaceOwnerId(ownerId);
+
+        // ── Visibility check ─────────────────────────────────────────────────
+        // Allowed if:
+        //   • current user IS the workspace owner  (Maroof sees everything)
+        //   • current user IS the board creator    (you always see your own board)
+        //   • board was created BY the workspace owner (everyone can see owner's boards)
+        const isOwner   = userId === ownerId;
+        const isCreator = userId === creatorId;
+        const boardIsOwnerCreated = creatorId === ownerId;
+
+        if (!isOwner && !isCreator && !boardIsOwnerCreated) {
+          setAccessDenied(true);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load board/workspace metadata", e);
+    }
+  };
+
   const fetchListsAndData = async () => {
     try {
       setLoading(true);
@@ -366,7 +407,14 @@ export default function BoardPage() {
   };
 
   useEffect(() => {
-    if (boardId) { fetchListsAndData(); fetchWorkspaceMembers(); }
+    if (boardId) {
+      (async () => {
+        const userId = await fetchCurrentUser();
+        if (userId !== null) await fetchBoardAndAccessCheck(userId);
+        await fetchListsAndData();
+        fetchWorkspaceMembers();
+      })();
+    }
   }, [boardId]);
 
   const openCreateModal = (listId: number) => {
@@ -454,6 +502,31 @@ export default function BoardPage() {
       </div>
     </div>
   );
+
+  // ─── Access Denied Screen ──────────────────────────────────────────────────
+  // Shown when a member directly navigates to a board they don't have access to.
+  if (accessDenied) return (
+    <div style={{ minHeight:"100vh", background: T.pageBg, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"Inter,sans-serif", padding:24, transition: "background .4s" }}>
+      <div style={{ textAlign:"center", maxWidth:400 }}>
+        <div style={{ fontSize:48, marginBottom:16 }}>🔒</div>
+        <h2 style={{ fontSize:22, fontWeight:800, color: T.textHeading, marginBottom:8, letterSpacing:"-0.5px" }}>
+          Access Restricted
+        </h2>
+        <p style={{ fontSize:14, color: T.textMuted, lineHeight:1.6, marginBottom:24 }}>
+          This board was created by a team member and is only visible to them and the workspace owner.
+        </p>
+        <button
+          onClick={() => navigate(workspaceId ? `/workspaces/${workspaceId}/boards` : "/")}
+          style={{ background:"linear-gradient(135deg,#6366F1,#4F46E5)", border:"none", color:"#fff", borderRadius:14, padding:"12px 28px", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", boxShadow:"0 4px 16px rgba(99,102,241,.35)" }}
+        >
+          ← Back to Boards
+        </button>
+      </div>
+    </div>
+  );
+
+  // Is the current user the workspace owner?
+  const isWorkspaceOwner = currentUserId !== null && currentUserId === workspaceOwnerId;
 
   return (
     <div style={{ minHeight:"100vh", background: T.pageBg, color: T.text, fontFamily:"Inter,sans-serif", display:"flex", flexDirection:"column", overflowX:"hidden", transition: "background .4s, color .3s" }}>
@@ -549,7 +622,7 @@ export default function BoardPage() {
               </span>
             </div>
 
-            {/* Cards Content */}
+            {/* Cards */}
             <div
               className="list-scroll"
               style={{ padding:"12px 12px 4px", overflowY:"auto", flex:1, display:"flex", flexDirection:"column", gap:10 }}
@@ -563,101 +636,41 @@ export default function BoardPage() {
                   style={{ background: T.taskBg, borderColor: T.taskBorder }}
                 >
                   {editingCard === card.id ? (
-                    /* Edit mode */
-                    <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                      <label style={{ fontSize:10, fontWeight:700, color:"#6366F1", letterSpacing:"0.1em", textTransform:"uppercase" }}>Title</label>
+                    <>
                       <input
-                        type="text"
+                        autoFocus
                         value={editTitle}
                         onChange={e => setEditTitle(e.target.value)}
                         className="input-glow"
-                        autoFocus
-                        style={{
-                          background: T.inputBg, border: `1px solid ${T.inputBorder}`,
-                          borderRadius:10, padding:"8px 12px", color: T.text, fontSize:13,
-                          fontFamily:"inherit", width:"100%", transition: "background .4s, color .3s"
-                        }}
+                        style={{ background: T.inputBg, border:`1px solid ${T.inputBorder}`, borderRadius:10, padding:"8px 10px", color: T.text, fontSize:13, fontFamily:"inherit", width:"100%", transition:"border-color .2s,box-shadow .2s,background .4s" }}
                       />
-                      <label style={{ fontSize:10, fontWeight:700, color:"#6366F1", letterSpacing:"0.1em", textTransform:"uppercase" }}>Link URL</label>
                       <input
-                        type="text"
-                        placeholder="https://…"
                         value={editLink}
                         onChange={e => setEditLink(e.target.value)}
+                        placeholder="Link (optional)"
                         className="input-glow"
-                        style={{
-                          background: T.inputBg, border: `1px solid ${T.inputBorder}`,
-                          borderRadius:10, padding:"8px 12px", color: T.text, fontSize:12,
-                          fontFamily:"inherit", width:"100%", transition: "background .4s, color .3s"
-                        }}
+                        style={{ background: T.inputBg, border:`1px solid ${T.inputBorder}`, borderRadius:10, padding:"8px 10px", color: T.text, fontSize:12, fontFamily:"inherit", width:"100%", transition:"border-color .2s,box-shadow .2s,background .4s" }}
                       />
-                      <div style={{ display:"flex", gap:8, justifyContent:"flex-end", marginTop:4 }}>
-                        <button
-                          onClick={() => setEditingCard(null)}
-                          style={{
-                            background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.08)",
-                            color: T.toggleText, borderStyle:"solid", borderWidth:1, borderRadius:9, padding:"6px 14px", fontSize:12,
-                            fontWeight:600, cursor:"pointer", fontFamily:"inherit",
-                          }}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => updateCard(card.id, list.id)}
-                          style={{
-                            background:"linear-gradient(135deg,#6366F1,#4F46E5)", border:"none",
-                            color:"#fff", borderRadius:9, padding:"6px 14px", fontSize:12,
-                            fontWeight:600, cursor:"pointer", fontFamily:"inherit",
-                          }}
-                        >
-                          Save
-                        </button>
+                      <div style={{ display:"flex", gap:6 }}>
+                        <button onClick={() => updateCard(card.id, list.id)} style={{ flex:1, background:"linear-gradient(135deg,#6366F1,#4F46E5)", border:"none", color:"#fff", borderRadius:9, padding:"7px", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Save</button>
+                        <button onClick={() => { setEditingCard(null); setEditTitle(""); setEditLink(""); }} style={{ flex:1, background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.08)", color: T.textSub, borderRadius:9, padding:"7px", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Cancel</button>
                       </div>
-                    </div>
+                    </>
                   ) : (
-                    /* View mode */
                     <>
                       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:8 }}>
-                        <span style={{ fontWeight:700, fontSize:13, color: T.textHeading, lineHeight:1.4, wordBreak:"break-word", flex:1, transition: "color .3s" }}>
+                        <span style={{ fontSize:13, fontWeight:600, color: T.text, lineHeight:1.4, flex:1, transition: "color .3s" }}>
                           {card.title}
                         </span>
-                        <div style={{ display:"flex", alignItems:"center", gap:4, flexShrink:0 }}>
-                          {card.important_link && (
-                            <a
-                              href={card.important_link.startsWith("http") ? card.important_link : `https://${card.important_link}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={e => e.stopPropagation()}
-                              style={{
-                                fontSize:11, color: theme === "dark" ? "#60A5FA" : "#2563EB",
-                                background: "rgba(99,102,241,.10)", border: "1px solid rgba(99,102,241,.2)",
-                                padding:"3px 8px", borderRadius:7, fontWeight:600, textDecoration:"none",
-                                display:"inline-flex", alignItems:"center", gap:3,
-                              }}
-                            >
-                              🔗
-                            </a>
-                          )}
+                        <div style={{ display:"flex", gap:5, flexShrink:0 }}>
                           <button
                             onClick={() => { setEditingCard(card.id); setEditTitle(card.title); setEditLink(card.important_link || ""); }}
-                            style={{
-                              fontSize:11, color: theme === "dark" ? "#818CF8" : "#4F46E5", background: T.toggleBg,
-                              border: `1px solid ${T.toggleBorder}`, padding:"3px 8px", borderRadius:7,
-                              fontWeight:600, cursor:"pointer", fontFamily:"inherit", transition: "background .3s, color .3s"
-                            }}
-                          >
-                            Edit
-                          </button>
+                            style={{ background:"none", border:"none", color: T.textMuted, fontSize:13, cursor:"pointer", padding:"2px 5px", borderRadius:6, fontFamily:"inherit", lineHeight:1, transition: "color .2s" }}
+                          >✎</button>
                           <button
                             onClick={() => deleteCard(card.id, list.id)}
-                            style={{
-                              fontSize:13, color:"#F87171", background:"rgba(239,68,68,.08)",
-                              border:"1px solid rgba(239,68,68,.2)", padding:"2px 7px", borderRadius:7,
-                              fontWeight:700, cursor:"pointer", fontFamily:"inherit", lineHeight:1.4,
-                            }}
-                          >
-                            ×
-                          </button>
+                            style={{ background:"none", border:"none", color: T.textMuted, fontSize:14, cursor:"pointer", padding:"2px 5px", borderRadius:6, fontFamily:"inherit", lineHeight:1, transition: "color .2s" }}
+                          >×</button>
                         </div>
                       </div>
 
@@ -735,7 +748,7 @@ export default function BoardPage() {
               ))}
             </div>
 
-            {/* Add card button footer */}
+            {/* Add card footer */}
             <div style={{ padding:"10px 12px 14px", flexShrink:0 }}>
               <button className="add-card-btn" onClick={() => openCreateModal(list.id)}>
                 <span style={{ fontSize:16, lineHeight:1 }}>+</span> Add Card
@@ -763,7 +776,6 @@ export default function BoardPage() {
       {isModalOpen && (
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setIsModalOpen(false); }}>
           <div className="modal-box" style={{ background: T.listBg, borderColor: T.listBorder }}>
-            {/* Header */}
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", borderBottom: theme === "dark" ? "1px solid rgba(255,255,255,.06)" : "1px solid rgba(99,102,241,.15)", paddingBottom:16 }}>
               <div>
                 <p style={{ fontSize:11, color:"#6366F1", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:4 }}>New Card</p>
@@ -771,18 +783,10 @@ export default function BoardPage() {
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                style={{
-                  background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.08)",
-                  color: T.textSub, borderRadius:10, width:34, height:34,
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                  fontSize:18, fontWeight:700, cursor:"pointer", fontFamily:"inherit", flexShrink:0,
-                }}
-              >
-                ×
-              </button>
+                style={{ background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.08)", color: T.textSub, borderRadius:10, width:34, height:34, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, fontWeight:700, cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}
+              >×</button>
             </div>
 
-            {/* Fields */}
             <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
               {[
                 { label:"Card Title *", type:"text", placeholder:"e.g. Implement OAuth", value:popupTitle, onChange:(v:string)=>setPopupTitle(v) },
@@ -800,38 +804,17 @@ export default function BoardPage() {
                     onChange={e => f.onChange(e.target.value)}
                     autoFocus={f.label.startsWith("Card")}
                     className="input-glow"
-                    style={{
-                      background: T.inputBg, border: `1px solid ${T.inputBorder}`,
-                      borderRadius:12, padding:"11px 14px", color: T.text, fontSize:13,
-                      fontFamily:"inherit", transition:"border-color .2s,box-shadow .2s, background .4s, color .3s",
-                      colorScheme: theme === "dark" ? "dark" : "light",
-                    }}
+                    style={{ background: T.inputBg, border: `1px solid ${T.inputBorder}`, borderRadius:12, padding:"11px 14px", color: T.text, fontSize:13, fontFamily:"inherit", transition:"border-color .2s,box-shadow .2s, background .4s, color .3s", colorScheme: theme === "dark" ? "dark" : "light" }}
                   />
                 </div>
               ))}
             </div>
 
-            {/* Actions */}
             <div style={{ display:"flex", gap:10, justifyContent:"flex-end", borderTop: theme === "dark" ? "1px solid rgba(255,255,255,.06)" : "1px solid rgba(99,102,241,.15)", paddingTop:16 }}>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                style={{
-                  background:"none", border:"1px solid transparent",
-                  color: T.textSub, borderRadius:12, padding:"10px 20px", fontSize:13,
-                  fontWeight:600, cursor:"pointer", fontFamily:"inherit",
-                }}
-              >
+              <button onClick={() => setIsModalOpen(false)} style={{ background:"none", border:"1px solid transparent", color: T.textSub, borderRadius:12, padding:"10px 20px", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
                 Cancel
               </button>
-              <button
-                onClick={createCardFromModal}
-                style={{
-                  background:"linear-gradient(135deg,#6366F1,#4F46E5)", border:"none",
-                  color:"#fff", borderRadius:12, padding:"10px 24px", fontSize:13,
-                  fontWeight:700, cursor:"pointer", fontFamily:"inherit",
-                  boxShadow:"0 4px 12px rgba(99,102,241,.3)",
-                }}
-              >
+              <button onClick={createCardFromModal} style={{ background:"linear-gradient(135deg,#6366F1,#4F46E5)", border:"none", color:"#fff", borderRadius:12, padding:"10px 24px", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", boxShadow:"0 4px 12px rgba(99,102,241,.3)" }}>
                 Create Card
               </button>
             </div>

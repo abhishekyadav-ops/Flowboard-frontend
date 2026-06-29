@@ -230,10 +230,11 @@ function Boards() {
   const T = theme === "dark" ? DARK : LIGHT;
 
   const [boards, setBoards] = useState<Board[]>([]);
-  const [workspaceName, setWorkspaceName] = useState(""); // Dynamic workspace text placeholder
+  const [workspaceName, setWorkspaceName] = useState("");
   const [boardName, setBoardName] = useState("");
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [workspaceOwnerId, setWorkspaceOwnerId] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -250,15 +251,14 @@ function Boards() {
     return () => { document.head.removeChild(tag); };
   }, []);
 
-  // New API execution targeting specific workspace details
   const fetchWorkspaceDetails = async () => {
     try {
       const res = await api.get(`/workspaces/${workspaceId}`);
-      if (res.data && res.data.name) {
-        setWorkspaceName(res.data.name);
-      }
+      if (res.data?.name) setWorkspaceName(res.data.name);
+      // Capture the workspace owner so visibility rules can be applied
+      if (res.data?.owner_id) setWorkspaceOwnerId(res.data.owner_id);
     } catch (e) {
-      console.error("Could not load targeted workspace configurations:", e);
+      console.error("Could not load workspace details:", e);
     }
   };
 
@@ -306,10 +306,10 @@ function Boards() {
   };
 
   useEffect(() => {
-    if (workspaceId) { 
-      fetchCurrentUser(); 
-      fetchWorkspaceDetails(); // Execute workspace metadata fetch parallelly 
-      fetchBoards(); 
+    if (workspaceId) {
+      fetchCurrentUser();
+      fetchWorkspaceDetails();
+      fetchBoards();
     }
   }, [workspaceId]);
 
@@ -321,6 +321,18 @@ function Boards() {
       </div>
     </div>
   );
+
+  // ─── Board Visibility Rules ────────────────────────────────────────────────
+  // Rule 1: Workspace owner creates a board → ALL members see it.
+  // Rule 2: A member creates a board → only the workspace owner + that member see it.
+  const isWorkspaceOwner = currentUserId !== null && currentUserId === workspaceOwnerId;
+
+  const visibleBoards = boards.filter(board => {
+    if (board.created_by === currentUserId) return true;        // always see your own boards
+    if (isWorkspaceOwner) return true;                          // owner sees everything
+    if (board.created_by === workspaceOwnerId) return true;     // owner's boards are visible to all
+    return false;                                               // other members' boards are hidden
+  });
 
   const fadeUp = (delay: string): React.CSSProperties =>
     mounted ? { animation:`fadeUp .5s ${delay} ease both` } : { opacity:0 };
@@ -355,7 +367,6 @@ function Boards() {
               <button className="breadcrumb" onClick={() => navigate("/dashboard")} style={{ color:T.accentText }}>
                 ← Workspaces
               </button>
-              {/* Dynamic Heading Container */}
               <div style={{ fontSize:16, fontWeight:800, color:T.text, letterSpacing:"-0.4px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", transition:"color .3s" }}>
                 {workspaceName || "Workspace Boards"}
               </div>
@@ -409,15 +420,15 @@ function Boards() {
             All Boards
           </span>
           <span style={{ background:T.tagBg, border:`1px solid ${T.tagBorder}`, color:T.accentText, borderRadius:20, fontSize:12, fontWeight:700, padding:"2px 10px", transition:"background .4s, border-color .4s" }}>
-            {boards.length}
+            {visibleBoards.length}
           </span>
         </div>
 
         {/* Boards grid */}
         <div className="boards-grid">
-          {boards.map((board, i) => (
+          {visibleBoards.map((board, i) => (
             <div key={board.id} className="board-card" onClick={() => navigate(`/boards/${board.id}`, { state:{ workspaceId } })} style={{ background:T.cardBg, borderColor:T.cardBorder, boxShadow: "none", ...(mounted ? { animation:`fadeUp .5s ${0.05*i+0.22}s ease both` } : { opacity:0 }) }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = T.cardHover; (e.currentTarget as HTMLElement).style.boxShadow = T.shadow; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = T.cardBorder; (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}>
-              
+
               {/* Top */}
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:10 }}>
                 <div style={{ display:"flex", flexDirection:"column", gap:5, minWidth:0, flex:1 }}>
@@ -452,7 +463,7 @@ function Boards() {
         </div>
 
         {/* Empty state */}
-        {boards.length === 0 && (
+        {visibleBoards.length === 0 && (
           <div style={{ textAlign:"center", padding:"56px 24px", border:`1px dashed ${T.emptyBorder}`, borderRadius:24, background:T.emptyBg, animation:"fadeUp .5s ease both", transition:"background .4s, border-color .4s" }}>
             <div style={{ fontSize:36, marginBottom:14, opacity:.4 }}>⬡</div>
             <p style={{ fontSize:17, fontWeight:600, color:T.emptyText, marginBottom:6, transition:"color .3s" }}>No boards yet</p>
